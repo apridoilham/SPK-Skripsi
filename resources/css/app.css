@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Styles */
+[x-cloak] {
+    display: none !important;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    @page {
+        margin: 0;
+        size: auto;
+    }
+}
