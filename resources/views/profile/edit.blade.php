@@ -18,9 +18,15 @@
                 
                 <div class="lg:col-span-1 space-y-6">
                     <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
-                        <div class="h-24 w-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold mx-auto mb-4 border-4 border-blue-50">
-                            {{ substr($user->name, 0, 1) }}
-                        </div>
+                        @if($user->profile_photo_path)
+                            <div class="mx-auto mb-4 h-24 w-24 rounded-full overflow-hidden border-4 border-blue-50">
+                                <img src="{{ Storage::disk('public')->url($user->profile_photo_path) }}" alt="{{ $user->name }}" class="h-full w-full object-cover">
+                            </div>
+                        @else
+                            <div class="h-24 w-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl font-bold mx-auto mb-4 border-4 border-blue-50">
+                                {{ substr($user->name, 0, 1) }}
+                            </div>
+                        @endif
                         <h3 class="text-lg font-bold text-gray-900">{{ $user->name }}</h3>
                         <p class="text-sm text-gray-500">{{ $user->email }}</p>
                         <div class="mt-4 pt-4 border-t border-gray-100 flex justify-center gap-2">

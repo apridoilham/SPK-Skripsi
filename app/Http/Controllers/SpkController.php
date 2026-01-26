@@ -239,6 +239,32 @@ class SpkController extends Controller
         return redirect()->back()->with('success', 'Lamaran berhasil dikirim.');
     }
 
+    public function updateLamaran(Request $request) {
+        $pelamar = Pelamar::where('user_id', Auth::id())->firstOrFail();
+        
+        if ($pelamar->status_lamaran !== 'Pending') {
+             return redirect()->back()->with('error', 'Lamaran tidak dapat diubah karena sudah diproses.');
+        }
+
+        $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'nullable|mimes:pdf|max:5120']);
+
+        $data = ['nama' => $request->nama];
+
+        if ($request->hasFile('file_berkas')) {
+            if ($pelamar->file_berkas && Storage::disk('public')->exists($pelamar->file_berkas)) {
+                Storage::disk('public')->delete($pelamar->file_berkas);
+            }
+            $path = $request->file('file_berkas')->store('berkas_lamaran', 'public');
+            $data['file_berkas'] = $path;
+        }
+
+        $pelamar->update($data);
+        
+        $this->logActivity("Pelamar " . $request->nama . " memperbarui berkas lamaran.", 'info');
+
+        return redirect()->back()->with('success', 'Lamaran berhasil diperbarui.');
+    }
+
     public function storeUser(Request $request){ 
         User::create(['name'=>$request->name,'email'=>$request->email,'password'=>Hash::make($request->password),'role'=>$request->role]); 
         $this->logActivity(Auth::user()->name . " menambahkan user baru: {$request->name} ({$request->role}).", 'info'); // LOG

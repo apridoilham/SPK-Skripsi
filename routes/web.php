@@ -21,10 +21,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Chatbot Routes
+    Route::post('/chat/send', [ChatbotController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/apply', [ChatbotController::class, 'applyCriteria'])->name('chat.apply');
+    Route::post('/chat/analyze-cv', [ChatbotController::class, 'analyzeCv'])->name('chat.analyze');
+
     // --- KHUSUS ROLE: PELAMAR ---
     Route::middleware(['role:pelamar'])->group(function () {
         // Submit lamaran baru
         Route::post('/lamar', [SpkController::class, 'storeLamaran'])->name('lamar.store');
+        Route::put('/lamar/update', [SpkController::class, 'updateLamaran'])->name('lamar.update');
     });
 
     // --- KHUSUS ROLE: HRD ---
@@ -38,10 +44,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Cetak & Download Laporan
         Route::get('/laporan/cetak', [SpkController::class, 'cetakLaporan'])->name('laporan.cetak');
         Route::get('/laporan/download', [SpkController::class, 'downloadLaporan'])->name('laporan.download');
-
-        // AI Chatbot (Eksklusif HRD)
-        Route::post('/asisten-ai/send', [ChatbotController::class, 'sendMessage'])->name('chat.send');
-        Route::post('/asisten-ai/apply', [ChatbotController::class, 'applyCriteria'])->name('chat.apply');
     });
 
     // --- KHUSUS ROLE: ADMIN ---

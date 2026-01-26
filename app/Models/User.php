@@ -21,6 +21,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role', // admin, hrd, pelamar
+        'profile_photo_path',
     ];
 
     /**

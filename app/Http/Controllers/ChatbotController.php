@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Kriteria;
+use App\Models\Pelamar;
+use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 class ChatbotController extends Controller
 {
@@ -135,6 +138,114 @@ class ChatbotController extends Controller
             return response()->json(['success' => true, 'message' => 'Sistem berhasil di-update dengan kriteria baru!']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal update database: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Menganalisis CV Pelamar dan memberikan rekomendasi nilai berdasarkan Kriteria
+     */
+    public function analyzeCv(Request $request)
+    {
+        $request->validate([
+            'pelamar_id' => 'required|exists:pelamars,id'
+        ]);
+
+        $pelamar = Pelamar::find($request->pelamar_id);
+        
+        // Cek file CV
+        if (!$pelamar->file_berkas || !Storage::disk('public')->exists($pelamar->file_berkas)) {
+            return response()->json(['success' => false, 'message' => 'File CV tidak ditemukan.']);
+        }
+
+        // 1. Ekstrak Teks dari PDF
+        try {
+            $parser = new Parser();
+            $pdfPath = Storage::disk('public')->path($pelamar->file_berkas);
+            $pdf = $parser->parseFile($pdfPath);
+            $text = $pdf->getText();
+            
+            // Limit text untuk menghindari token limit
+            $text = substr($text, 0, 8000); 
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal membaca file PDF: ' . $e->getMessage()]);
+        }
+
+        // 2. Ambil Kriteria Aktif
+        $kriterias = Kriteria::all();
+        if ($kriterias->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Belum ada kriteria penilaian di sistem.']);
+        }
+
+        // 3. Susun Prompt
+        $criteriaContext = $kriterias->map(function($k) {
+            $opsiStr = collect($k->opsi)->map(function($val, $key) {
+                return "   - Nilai " . ($key+1) . ": $val";
+            })->join("\n");
+            
+            return "Kriteria: {$k->nama} (Kode: {$k->kode})\nOpsi Penilaian:\n$opsiStr";
+        })->join("\n\n");
+
+        $prompt = "
+        PERAN:
+        Anda adalah HR Specialist Senior yang ahli menilai CV kandidat.
+        
+        TUGAS:
+        1. Baca rangkuman CV kandidat di bawah ini.
+        2. Analisis kecocokan kandidat terhadap setiap Kriteria Penilaian yang tersedia.
+        3. Tentukan nilai (skor 1-5) untuk setiap kriteria berdasarkan bukti di CV.
+        
+        ATURAN PENILAIAN:
+        - Jika kualifikasi kandidat COCOK/SANGAT BAIK dengan kriteria -> Beri nilai tinggi (4 atau 5).
+        - Jika kualifikasi KURANG atau TIDAK DISEBUTKAN -> Beri nilai TERENDAH (1).
+        - Jangan berasumsi. Jika tidak ada info relevan di CV, pilih nilai 1.
+        
+        DATA KRITERIA:
+        $criteriaContext
+        
+        ISI CV KANDIDAT:
+        $text
+        
+        FORMAT OUTPUT JSON WAJIB:
+        {
+            \"summary\": \"Rangkuman profil kandidat dalam 2-3 kalimat (Bahasa Indonesia).\",
+            \"scores\": {
+                \"KODE_KRITERIA\": NILAI_ANGKA,
+                \"KODE_KRITERIA_LAIN\": NILAI_ANGKA
+            }
+        }
+        Contoh: {\"summary\": \"Kandidat berpengalaman...\", \"scores\": {\"C1\": 5, \"C2\": 1}}
+        
+        Output HANYA JSON. Jangan ada teks lain.
+        ";
+
+        // 4. Kirim ke Groq
+        $apiKey = env('GROQ_API_KEY');
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey, 
+                'Content-Type'  => 'application/json',
+            ])->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model' => 'llama-3.3-70b-versatile',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'You are a JSON generator. Always return valid JSON.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'temperature' => 0.1, // Rendah agar konsisten/deterministik
+                'response_format' => ['type' => 'json_object'] // Paksa mode JSON
+            ]);
+
+            /** @var \Illuminate\Http\Client\Response $response */
+            if ($response->successful()) {
+                $result = $response->json()['choices'][0]['message']['content'];
+                return response()->json([
+                    'success' => true,
+                    'data' => json_decode($result)
+                ]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Gagal koneksi ke AI.']);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
     }
 }
