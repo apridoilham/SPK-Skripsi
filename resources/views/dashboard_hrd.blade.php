@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="head">
         <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <style>
             [x-cloak] { display: none !important; }
             /* Custom Scrollbar */
@@ -321,84 +322,7 @@
             </div>
         </div>
 
-        <div x-data="{ 
-                chatOpen: false, 
-                messages: JSON.parse(localStorage.getItem('chat_history')) || [{ role: 'bot', text: 'Halo! 👋<br>Saya Asisten AI. Ada yang bisa saya bantu terkait kriteria rekrutmen?' }],
-                userInput: '',
-                isLoading: false,
-                
-                // Fungsi untuk Simpan ke LocalStorage
-                saveHistory() {
-                    localStorage.setItem('chat_history', JSON.stringify(this.messages));
-                },
-
-                // Fungsi Hapus Riwayat
-                clearHistory() {
-                    if(confirm('Hapus semua riwayat percakapan?')) {
-                        localStorage.removeItem('chat_history');
-                        this.messages = [{ role: 'bot', text: 'Halo! 👋<br>Riwayat telah dihapus. Ada yang bisa saya bantu lagi?' }];
-                    }
-                },
-
-                async sendMessage() {
-                    if(!this.userInput.trim() || this.isLoading) return;
-                    
-                    // 1. Push pesan user
-                    this.messages.push({ role: 'user', text: this.userInput });
-                    let currentMsg = this.userInput; 
-                    this.userInput = ''; 
-                    this.isLoading = true;
-                    this.saveHistory(); // Simpan
-                    
-                    this.$nextTick(() => { this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight; });
-
-                    try {
-                        const response = await fetch('{{ route('chat.send') }}', { 
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, 
-                            body: JSON.stringify({ message: currentMsg }) 
-                        });
-                        const data = await response.json();
-                        this.isLoading = false; 
-                        this.processResponse(data.reply);
-                    } catch (e) { 
-                        this.isLoading = false; 
-                        this.messages.push({ role: 'bot', text: '⚠️ Maaf, koneksi terputus.' }); 
-                        this.saveHistory(); // Simpan error juga
-                    }
-                },
-
-                processResponse(rawReply) {
-                    const jsonStart = '|||JSON_START|||'; const jsonEnd = '|||JSON_END|||';
-                    
-                    if (rawReply.includes(jsonStart)) {
-                        let parts = rawReply.split(jsonStart);
-                        if(parts[0].trim()) {
-                            this.messages.push({ role: 'bot', text: this.formatText(parts[0].trim()) });
-                        }
-                        try {
-                            let jsonData = JSON.parse(rawReply.split(jsonStart)[1].split(jsonEnd)[0]);
-                            this.messages.push({ role: 'proposal', data: jsonData });
-                        } catch(e) { console.error(e); }
-                    } else { 
-                        this.messages.push({ role: 'bot', text: this.formatText(rawReply) }); 
-                    }
-                    
-                    this.saveHistory(); // Simpan balasan bot
-                    this.$nextTick(() => { this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight; });
-                },
-
-                formatText(text) { return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); },
-
-                async applyConfig(data) {
-                    if(!confirm('Terapkan rekomendasi ini ke sistem? Data lama akan diganti.')) return;
-                    try {
-                        const res = await fetch('{{ route('chat.apply') }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ criteria: data }) });
-                        const result = await res.json();
-                        if(result.success) { alert('✅ Berhasil! Halaman akan dimuat ulang.'); window.location.reload(); }
-                    } catch(e) { alert('Gagal menerapkan perubahan.'); }
-                }
-             }"
+        <div x-data="chatBot()"
              class="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4" x-cloak>
 
             <div x-show="chatOpen" 
@@ -457,4 +381,122 @@
         </div>
 
     </div>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('chatBot', () => ({
+                chatOpen: false,
+                messages: JSON.parse(localStorage.getItem('chat_history')) || [{ role: 'bot', text: 'Halo! 👋<br>Saya Asisten AI. Ada yang bisa saya bantu terkait kriteria rekrutmen?' }],
+                userInput: '',
+                isLoading: false,
+
+                // Fungsi untuk Simpan ke LocalStorage
+                saveHistory() {
+                    localStorage.setItem('chat_history', JSON.stringify(this.messages));
+                },
+
+                // Fungsi Hapus Riwayat
+                clearHistory() {
+                    Swal.fire({
+                        title: 'Hapus Riwayat?',
+                        text: "Semua percakapan akan dihapus permanen.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Ya, Hapus!',
+                        cancelButtonText: 'Batal'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            localStorage.removeItem('chat_history');
+                            this.messages = [{ role: 'bot', text: 'Halo! 👋<br>Riwayat telah dihapus. Ada yang bisa saya bantu lagi?' }];
+                            Swal.fire('Terhapus!', 'Riwayat percakapan telah dibersihkan.', 'success');
+                        }
+                    });
+                },
+
+                async sendMessage() {
+                    if(!this.userInput.trim() || this.isLoading) return;
+                    
+                    // 1. Push pesan user
+                    this.messages.push({ role: 'user', text: this.userInput });
+                    let currentMsg = this.userInput; 
+                    this.userInput = ''; 
+                    this.isLoading = true;
+                    this.saveHistory(); // Simpan
+                    
+                    this.$nextTick(() => { this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight; });
+
+                    try {
+                        const response = await fetch("{{ route('chat.send') }}", { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': "{{ csrf_token() }}" }, 
+                            body: JSON.stringify({ message: currentMsg }) 
+                        });
+                        const data = await response.json();
+                        this.isLoading = false; 
+                        this.processResponse(data.reply);
+                    } catch (e) { 
+                        this.isLoading = false; 
+                        this.messages.push({ role: 'bot', text: '⚠️ Maaf, koneksi terputus.' }); 
+                        this.saveHistory(); // Simpan error juga
+                    }
+                },
+
+                processResponse(rawReply) {
+                    const jsonStart = '|||JSON_START|||'; const jsonEnd = '|||JSON_END|||';
+                    
+                    if (rawReply.includes(jsonStart)) {
+                        let parts = rawReply.split(jsonStart);
+                        if(parts[0].trim()) {
+                            this.messages.push({ role: 'bot', text: this.formatText(parts[0].trim()) });
+                        }
+                        try {
+                            let jsonData = JSON.parse(rawReply.split(jsonStart)[1].split(jsonEnd)[0]);
+                            this.messages.push({ role: 'proposal', data: jsonData });
+                        } catch(e) { console.error(e); }
+                    } else { 
+                        this.messages.push({ role: 'bot', text: this.formatText(rawReply) }); 
+                    }
+                    
+                    this.saveHistory(); // Simpan balasan bot
+                    this.$nextTick(() => { this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight; });
+                },
+
+                formatText(text) { return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); },
+
+                async applyConfig(data) {
+                    const result = await Swal.fire({
+                        title: 'Terapkan Rekomendasi?',
+                        text: "Data kriteria lama akan diganti dengan rekomendasi AI ini.",
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: 'Ya, Terapkan!',
+                        cancelButtonText: 'Batal'
+                    });
+
+                    if(!result.isConfirmed) return;
+
+                    try {
+                        Swal.fire({ title: 'Menyimpan...', didOpen: () => { Swal.showLoading() } });
+                        const res = await fetch("{{ route('chat.apply') }}", { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': "{{ csrf_token() }}" }, body: JSON.stringify({ criteria: data }) });
+                        const apiResult = await res.json();
+                        
+                        if(apiResult.success) { 
+                            await Swal.fire({
+                                title: 'Berhasil!',
+                                text: 'Konfigurasi telah diterapkan. Halaman akan dimuat ulang.',
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            });
+                            window.location.reload(); 
+                        }
+                    } catch(e) { 
+                        Swal.fire('Error', 'Gagal menerapkan perubahan.', 'error'); 
+                    }
+                }
+            }));
+        });
+    </script>
 </x-app-layout>

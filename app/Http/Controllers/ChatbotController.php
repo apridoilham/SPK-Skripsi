@@ -8,6 +8,8 @@ use App\Models\Kriteria;
 
 class ChatbotController extends Controller
 {
+    // Method index() dihapus karena UI chatbot sudah pindah ke floating button di Dashboard HRD
+
     /**
      * Menangani pesan chat dari user ke AI
      */
@@ -84,9 +86,14 @@ class ChatbotController extends Controller
                 'max_tokens' => 1024
             ]);
 
+            // Fix: Tambahkan Type Hint agar editor mengenali method Laravel HTTP Client
+            /** @var \Illuminate\Http\Client\Response $response */
             if ($response->successful()) {
+                $responseData = $response->json();
+                $replyContent = $responseData['choices'][0]['message']['content'] ?? 'Maaf, tidak ada respon teks dari AI.';
+
                 return response()->json([
-                    'reply' => $response->json()['choices'][0]['message']['content']
+                    'reply' => $replyContent
                 ]);
             } else {
                 return response()->json([
