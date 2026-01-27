@@ -31,7 +31,7 @@ class SpkController extends Controller
             $users = User::all();
             $pelamars = Pelamar::all();
             // Ambil 20 Log Aktivitas Terakhir untuk Admin
-            $logs = ActivityLog::with('user')->latest()->limit(20)->get();
+            $logs = ActivityLog::with('user')->latest()->paginate(20);
             
             return view('dashboard_admin', compact('users', 'pelamars', 'logs'));
 
@@ -84,9 +84,9 @@ class SpkController extends Controller
     public function prosesHitungRanking()
     {
         $pelamars = Pelamar::all();
-        if ($pelamars->isEmpty()) return back()->with('error', 'Tidak ada data pelamar.');
+        if ($pelamars->isEmpty()) return back()->with('error', __('No applicant data found.'));
         $kriterias = Kriteria::all();
-        if ($kriterias->isEmpty()) return back()->with('error', 'Kriteria belum diset.');
+        if ($kriterias->isEmpty()) return back()->with('error', __('Criteria not set.'));
 
         $dataNilai = [];
         foreach ($pelamars as $p) {
@@ -119,7 +119,7 @@ class SpkController extends Controller
         // LOG AKTIVITAS
         $this->logActivity(Auth::user()->name . ' melakukan perhitungan ulang ranking SAW.', 'info');
 
-        return back()->with('success', 'Perhitungan ranking SAW selesai! Skor telah diperbarui.');
+        return back()->with('success', __('SAW ranking calculation completed! Scores updated.'));
     }
 
     // --- FUNGSI UPDATE NILAI (DENGAN LOG) ---
@@ -134,7 +134,7 @@ class SpkController extends Controller
         // LOG AKTIVITAS
         $this->logActivity(Auth::user()->name . " mengubah nilai penilaian untuk kandidat: {$pelamar->nama}.", 'warning');
 
-        return redirect()->back()->with('success', 'Data nilai diperbarui.');
+        return redirect()->back()->with('success', __('Score data updated.'));
     }
 
     // --- FUNGSI UPDATE STATUS (DENGAN LOG) ---
@@ -149,7 +149,7 @@ class SpkController extends Controller
             $this->logActivity(Auth::user()->name . " mengubah status {$pelamar->nama} dari {$oldStatus} menjadi {$request->status}.", 'warning');
         }
 
-        return redirect()->back()->with('success', 'Status pelamar diubah.');
+        return redirect()->back()->with('success', __('Applicant status updated.'));
     }
 
     // --- FUNGSI DELETE USER (DENGAN LOG) ---
@@ -173,7 +173,7 @@ class SpkController extends Controller
         // LOG AKTIVITAS
         $this->logActivity(Auth::user()->name . " menghapus user: {$userName} (Role: {$userRole}).", 'danger');
 
-        return back()->with('success','User dan berkas lamaran dihapus permanen.'); 
+        return back()->with('success', __('User and application files permanently deleted.')); 
     }
 
     public function cetakLaporan(Request $request) {
@@ -213,7 +213,7 @@ class SpkController extends Controller
     public function updateKriteria(Request $request) {
         $data = $request->input('kriteria');
         $totalBobot = 0; foreach ($data as $item) $totalBobot += (float) $item['bobot'];
-        if (abs($totalBobot - 100) > 0.1) return redirect()->back()->with('error', 'Total bobot harus 100%.');
+        if (abs($totalBobot - 100) > 0.1) return redirect()->back()->with('error', __('Total weight must be 100%.'));
 
         Kriteria::truncate();
         foreach ($data as $item) {
@@ -226,24 +226,28 @@ class SpkController extends Controller
         // LOG AKTIVITAS
         $this->logActivity(Auth::user()->name . " memperbarui konfigurasi kriteria dan bobot.", 'warning');
 
-        return redirect()->back()->with('success', 'Konfigurasi Kriteria diperbarui.');
+        return redirect()->back()->with('success', __('Criteria configuration updated.'));
     }
 
     public function storeLamaran(Request $request) {
-        $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'required|mimes:pdf|max:5120']);
-        $path = $request->file('file_berkas')->store('berkas_lamaran', 'public');
-        Pelamar::create(['user_id' => Auth::id(), 'nama' => $request->nama, 'file_berkas' => $path, 'status_lamaran' => 'Pending', 'nilai_kriteria' => [], 'skor_akhir' => 0]);
-        
-        $this->logActivity("Pelamar " . $request->nama . " mengirim berkas lamaran baru.", 'info'); // LOG
-
-        return redirect()->back()->with('success', 'Lamaran berhasil dikirim.');
+        try {
+            $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'required|mimes:pdf|max:5120']);
+            $path = $request->file('file_berkas')->store('berkas_lamaran', 'public');
+            Pelamar::create(['user_id' => Auth::id(), 'nama' => $request->nama, 'file_berkas' => $path, 'status_lamaran' => 'Pending', 'nilai_kriteria' => [], 'skor_akhir' => 0]);
+            
+            $this->logActivity("Pelamar " . $request->nama . " mengirim berkas lamaran baru.", 'info'); // LOG
+    
+            return redirect()->back()->with('success', __('Application submitted successfully.'));
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', __('Failed to submit application: ') . $e->getMessage());
+        }
     }
 
     public function updateLamaran(Request $request) {
         $pelamar = Pelamar::where('user_id', Auth::id())->firstOrFail();
         
         if ($pelamar->status_lamaran !== 'Pending') {
-             return redirect()->back()->with('error', 'Lamaran tidak dapat diubah karena sudah diproses.');
+             return redirect()->back()->with('error', __('Application cannot be modified as it has already been processed.'));
         }
 
         $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'nullable|mimes:pdf|max:5120']);
@@ -262,20 +266,20 @@ class SpkController extends Controller
         
         $this->logActivity("Pelamar " . $request->nama . " memperbarui berkas lamaran.", 'info');
 
-        return redirect()->back()->with('success', 'Lamaran berhasil diperbarui.');
+        return redirect()->back()->with('success', __('Application updated successfully.'));
     }
 
     public function storeUser(Request $request){ 
         User::create(['name'=>$request->name,'email'=>$request->email,'password'=>Hash::make($request->password),'role'=>$request->role]); 
         $this->logActivity(Auth::user()->name . " menambahkan user baru: {$request->name} ({$request->role}).", 'info'); // LOG
-        return back()->with('success','User ditambahkan.'); 
+        return back()->with('success', __('User added.')); 
     }
     
     public function updateUser(Request $request, $id){ 
         $u = User::findOrFail($id);
         $u->update(['name'=>$request->name,'email'=>$request->email,'role'=>$request->role]); 
         $this->logActivity(Auth::user()->name . " mengupdate data user: {$request->name}.", 'info'); // LOG
-        return back()->with('success','User diperbarui.'); 
+        return back()->with('success', __('User updated.')); 
     }
 
     public function viewPdf($path){ 

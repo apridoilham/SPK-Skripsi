@@ -36,7 +36,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'hrd',
         ]);
 
-        // 3. Akun Pelamar
+        // 3. Akun Pelamar (Dihapus sesuai permintaan: Hanya Admin & HRD)
+        /*
         $pelamarUser = User::create([
             'name' => 'Aprido Ilham',
             'email' => 'aprido@gmail.com',
@@ -44,15 +45,15 @@ class DatabaseSeeder extends Seeder
             'role' => 'pelamar',
         ]);
 
-        // Buat data pelamar untuk Aprido Ilham
         Pelamar::create([
             'user_id' => $pelamarUser->id,
             'nama' => $pelamarUser->name,
             'file_berkas' => 'dummy.pdf',
             'status_lamaran' => 'Pending',
-            'nilai_kriteria' => ['C1' => 3, 'C2' => 3, 'C3' => 3, 'C4' => 3], // Nilai default rata-rata
+            'nilai_kriteria' => ['C1' => 3, 'C2' => 3, 'C3' => 3, 'C4' => 3],
             'skor_akhir' => 0
         ]);
+        */
         
         // 4. Seeder Kriteria Default (Agar sistem langsung bisa dipakai)
         Kriteria::insert([
@@ -61,5 +62,8 @@ class DatabaseSeeder extends Seeder
             ['kode' => 'C3', 'nama' => 'Sertifikat', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['0','1','2','3','>3'])],
             ['kode' => 'C4', 'nama' => 'Kesehatan', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['Buruk','Kurang','Cukup','Baik','Sangat Baik'])],
         ]);
+
+        // 5. Seed Knowledge Base AI
+        $this->call(AiKnowledgeBaseSeeder::class);
     }
 }
