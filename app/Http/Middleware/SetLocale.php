@@ -20,9 +20,16 @@ class SetLocale
 
         if (!$locale) {
             $locale = $request->cookie('locale', config('app.locale'));
-            if ($locale) {
-                $request->session()->put('locale', $locale);
-            }
+        }
+
+        // Validate locale to prevent crash from encrypted cookies or invalid values
+        if (!in_array($locale, ['en', 'id'])) {
+            $locale = config('app.locale');
+        }
+
+        // Ensure session has the valid locale
+        if ($request->session()->get('locale') !== $locale) {
+            $request->session()->put('locale', $locale);
         }
 
         App::setLocale($locale);
