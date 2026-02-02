@@ -79,23 +79,25 @@ class ChatbotController extends Controller
             })->join("\n");
         }
 
-        // 1. System Prompt - FULL INTELLIGENCE
-        $systemPrompt = "ROLE:CHCO/Consultant. TONE:Pro-Human.
+        // 1. System Prompt - ELITE EXPERT MODE
+        $systemPrompt = "ROLE:Elite Chief Human Capital Officer & Senior Data Scientist.
+        TONE:Highly Professional, Strategic, Detailed, and Insightful.
         CTX:$infoKriteria
         $knowledgeContext
         RULES:
-        1.DEEP_CUSTOM:Role-specific criteria(Dr->STR,IT->Code). No generic.
-        2.ADAPT:Forget old ctx if topic changes.
-        3.ACT:If user needs NEW criteria->ID skills->Create 4-5 specific->JSON end.
+        1.DEEP_ANALYSIS: Provide comprehensive, multi-layered answers. Don't just answer 'what', answer 'why' and 'how'.
+        2.STRATEGIC VALUE: Connect every insight to business impact and long-term organizational goals.
+        3.CUSTOMIZATION: Use the specific criteria context to tailor advice perfectly.
+        4.PROACTIVE: Suggest related concepts, risks, or opportunities user might have missed.
         JSON_FMT:[{\"kode\":\"C1\",\"nama\":\"..\",\"bobot\":30,\"jenis\":\"benefit\",\"opsi\":[\"..\"]}]";
 
-        // 2. Chat History - FULL CONTEXT
+        // 2. Chat History - EXTENDED CONTEXT
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt]
         ];
 
         if (!empty($history) && is_array($history)) {
-            $limitedHistory = array_slice($history, -6); // Keep last 6 messages
+            $limitedHistory = array_slice($history, -10); // Keep last 10 messages for deep context
             foreach ($limitedHistory as $msg) {
                 if (isset($msg['role']) && isset($msg['content'])) {
                     $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
@@ -116,7 +118,7 @@ class ChatbotController extends Controller
                 'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
                 'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
-                'max_tokens' => 1024 // Restore Full Power
+                'max_tokens' => 4096 // MAXIMUM POWER
             ]);
 
             if ($response->successful()) {
@@ -177,12 +179,15 @@ class ChatbotController extends Controller
             $promptContext .= "{$rank}. {$r['nama']} (Skor: {$r['skor_kalkulasi']})\n";
         }
 
-        $systemPrompt = "ROLE:HR. GOAL:Explain SAW simply.
+        $systemPrompt = "ROLE:Lead Data Scientist & HR Strategist. GOAL:Provide Deep-Dive Analytical Explanation of SAW Results.
         OUT(Markdown):
-        1.Why this result?
-        2.Winner strength?
-        3.Rank1 vs 2 diff?
-        4.Advice?";
+        1. **Strategic Executive Summary**: Why this ranking matters for the business.
+        2. **Winner's Competitive Advantage**: Detailed breakdown of the top candidate's strengths relative to the specific criteria weights.
+        3. **Gap Analysis (Rank 1 vs Rank 2)**: Precise statistical difference explanation. What exactly did #2 miss?
+        4. **Sensitivity Note**: How stable is this result? (e.g., if criteria X changed slightly, would the winner change?)
+        5. **Actionable Recommendation**: Next steps (Interview focus, negotiation leverage, etc.).
+        
+        Use bolding, lists, and professional formatting. Be exhaustive.";
 
         try {
             $client = \Illuminate\Support\Facades\Http::withHeaders([
@@ -198,7 +203,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $promptContext]
                 ],
                 'temperature' => 0.7,
-                'max_tokens'  => 1024,
+                'max_tokens'  => 4096,
             ]);
 
             $responseData = $response->json();
@@ -306,12 +311,15 @@ class ChatbotController extends Controller
             $knowledgeContext = "RULES:" . $knowledge->pluck('content')->join("|");
         }
 
-        $prompt = "ROLE:Auditor. TASK:Score CV.
+        $prompt = "ROLE:Elite Talent Auditor. TASK:Deep-Dive CV Scoring & Profiling.
         RULES:
         1.CONSISTENT:Input=Output same.
-        2.EVIDENCE:No text=Score 1. Quote evidence.
+        2.EVIDENCE:No text=Score 1. Quote evidence VERBATIM from text.
         3.CALC:Duration=End-Start. Round down.
         4.MATCH:Literal scale match.
+        5.PSYCHO:Infer deep psychological traits from writing style, career choices, and hobbies.
+        6.RED_FLAGS:Scrutinize for job hopping, gaps, inconsistency, or generic fluff.
+        7.INTERVIEW:Generate behavior-based questions targeting specific weaknesses found.
         
         $knowledgeContext
         CRITERIA:$criteriaContext
@@ -321,15 +329,20 @@ class ChatbotController extends Controller
         
         OUT(JSON):
         {
-            \"summary\": \"Profile & Exp Duration(Calc)\",
-            \"recommendation\": \"HIGH/CONSIDER/LOW\",
-            \"match_confidence\": \"HIGH/MED/LOW\",
-            \"red_flags\": [\"..\"],
-            \"psychometrics\": {\"leadership_potential\":\"..\",\"culture_fit_score\":1-100,\"work_style\":\"..\",\"dominant_traits\":[\"..\"]},
-            \"interview_questions\": [\"..\"],
-            \"competency_gap\": [\"..\"],
+            \"summary\": \"Executive Summary: A comprehensive 3-5 sentence overview of the candidate's profile, highlighting key strengths, career trajectory, and overall suitability.\",
+            \"recommendation\": \"HIGHLY RECOMMENDED / CONSIDER WITH RESERVATIONS / NOT RECOMMENDED\",
+            \"match_confidence\": \"HIGH / MEDIUM / LOW\",
+            \"red_flags\": [\"Detailed Red Flag 1\", \"Detailed Red Flag 2\"],
+            \"psychometrics\": {
+                \"leadership_potential\": \"High/Medium/Low - Explanation\",
+                \"culture_fit_score\": 1-100,
+                \"work_style\": \"Detailed description of their probable work style (e.g., Independent, Collaborative, Process-Oriented).\",
+                \"dominant_traits\": [\"Trait 1\", \"Trait 2\", \"Trait 3\"]
+            },
+            \"interview_questions\": [\"Question 1 (Targeting Gap X)\", \"Question 2 (Targeting Trait Y)\", \"Question 3 (General Fit)\"],
+            \"competency_gap\": [\"Gap 1\", \"Gap 2\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"..\",\"evidence\":\"Quote\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"EXTREMELY DETAILED reason citing specific years, projects, or skills.\",\"evidence\":\"Verbatim quote from CV\"}
             }
         }";
 
@@ -346,7 +359,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
-                'max_tokens' => 2048, // Limit output FULL
+                'max_tokens' => 4096, // Limit output MAXIMUM
                 // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON
             ]);
