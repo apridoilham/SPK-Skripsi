@@ -119,7 +119,7 @@ class ChatbotController extends Controller
                 'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
                 'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
-                'max_tokens' => 1024
+                'max_tokens' => 150 // Hemat token ekstrem
             ]);
 
             if ($response->successful()) {
@@ -201,7 +201,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $promptContext]
                 ],
                 'temperature' => 0.7,
-                'max_tokens'  => 1000,
+                'max_tokens'  => 200,
             ]);
 
             $responseData = $response->json();
@@ -277,7 +277,7 @@ class ChatbotController extends Controller
             
             // Limit text untuk menghindari token limit
             $text = preg_replace('/\s+/', ' ', $text); // Compress whitespace
-            $text = substr($text, 0, 5000); // Extreme limit (was 10k)
+            $text = substr($text, 0, 750); // Extreme limit: Only 750 chars (approx 200 tokens)
 
             // Validasi: Jika teks terlalu pendek (berarti PDF mungkin hasil scan gambar)
             if (strlen(trim($text)) < 50) {
@@ -312,9 +312,9 @@ class ChatbotController extends Controller
         $prompt = "ROLE:Auditor. TASK:Score CV.
         RULES:
         1.CONSISTENT:Input=Output same.
-        2.EVIDENCE:No text=Score 1. Quote evidence.
-        3.CALC:Duration=End-Start. Round down.
-        4.MATCH:Literal scale match.
+        2.EVIDENCE:No text=Score 1.
+        3.CALC:Duration=End-Start.
+        4.MATCH:Literal scale.
         
         $knowledgeContext
         CRITERIA:$criteriaContext
@@ -322,7 +322,7 @@ class ChatbotController extends Controller
         CV({$pelamar->nama}):
         $text
         
-        OUT(JSON):
+        OUT(JSON,BRIEF):
         {
             \"summary\": \"Profile & Exp Duration(Calc)\",
             \"recommendation\": \"HIGH/CONSIDER/LOW\",
@@ -332,7 +332,7 @@ class ChatbotController extends Controller
             \"interview_questions\": [\"..\"],
             \"competency_gap\": [\"..\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"..\",\"evidence\":\"Quote\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"Short reason\",\"evidence\":\"Short quote\"}
             }
         }";
 
@@ -349,6 +349,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
+                'max_tokens' => 300, // Limit output ekstrem
                 // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON
             ]);
