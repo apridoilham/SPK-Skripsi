@@ -13,7 +13,7 @@
         .title { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin-top: 30px; text-transform: uppercase; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
         table, th, td { border: 1px solid #000; }
-        th { background-color: #f0f0f0; padding: 10px; text-align: center; font-weight: bold; -webkit-print-color-adjust: exact; }
+        th { background-color: #f0f0f0; padding: 10px; text-align: center; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         td { padding: 8px; text-align: center; }
         td.nama { text-align: left; padding-left: 10px; }
         .footer { margin-top: 50px; float: right; width: 250px; text-align: center; }

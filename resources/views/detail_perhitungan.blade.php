@@ -113,7 +113,7 @@
                         <table class="w-full text-sm text-left">
                             <thead class="text-xs text-slate-500 uppercase bg-slate-50">
                                 <tr>
-                                    <th class="px-4 py-3">Candidate</th>
+                                    <th class="px-4 py-3">Supplier</th>
                                     @foreach($kriterias as $k)
                                     <th class="px-4 py-3 text-center">{{ $k->kode }}</th>
                                     @endforeach
@@ -143,7 +143,7 @@
                         <table class="w-full text-sm text-left">
                             <thead class="text-xs text-slate-500 uppercase bg-slate-50">
                                 <tr>
-                                    <th class="px-4 py-3">Candidate</th>
+                                    <th class="px-4 py-3">Supplier</th>
                                     @foreach($kriterias as $k)
                                     <th class="px-4 py-3 text-center">{{ $k->kode }}</th>
                                     @endforeach
@@ -174,7 +174,7 @@
                             <thead class="text-xs text-slate-500 uppercase bg-slate-50">
                                 <tr>
                                     <th class="px-4 py-3">Rank</th>
-                                    <th class="px-4 py-3">Candidate</th>
+                                    <th class="px-4 py-3">Supplier</th>
                                     <th class="px-4 py-3 text-right">Final Score</th>
                                 </tr>
                             </thead>

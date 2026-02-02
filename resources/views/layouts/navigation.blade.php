@@ -35,9 +35,14 @@
                                     @php
                                         $roleColor = match(Auth::user()->role) {
                                             'admin' => 'EF4444', // Red-500
-                                            'hrd' => '8B5CF6',   // Violet-500
-                                            'pelamar' => '3B82F6', // Blue-500
+                                            'hrd' => '8B5CF6',   // Violet-500 (Manager)
+                                            'staff' => '3B82F6', // Blue-500 (Staff)
                                             default => '6B7280' // Gray-500
+                                        };
+                                        $displayRole = match(Auth::user()->role) {
+                                            'hrd' => 'Manager',
+                                            'staff' => 'Staff', 
+                                            default => ucfirst(Auth::user()->role)
                                         };
                                         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode(Auth::user()->name) . "&background=" . $roleColor . "&color=fff&size=128&bold=true";
                                     @endphp
@@ -45,7 +50,7 @@
                                 @endif
                                 <div class="flex flex-col items-start leading-none">
                                     <span class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">{{ Auth::user()->name }}</span>
-                                    <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">{{ __(ucfirst(Auth::user()->role)) }}</span>
+                                    <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">{{ __($displayRole) }}</span>
                                 </div>
                             </div>
 

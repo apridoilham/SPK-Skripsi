@@ -40,9 +40,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chat/explain-decision', [ChatbotController::class, 'explainDecision'])->name('chat.explain.decision'); // AI Decision Explainer
     Route::post('/chat/negotiation-coach', [ChatbotController::class, 'negotiationCoach'])->name('chat.negotiate'); // AI Negotiation Coach
     Route::post('/chat/teach', [ChatbotController::class, 'teachAi'])->name('chat.teach');
+    Route::post('/chat/apply-criteria', [ChatbotController::class, 'applyCriteria'])->name('chat.apply');
+    Route::post('/chat/analyze-cv', [ChatbotController::class, 'analyzeCv'])->name('chat.analyze'); // AI CV Analyzer
+
 
     // --- KHUSUS ROLE: STAFF (Legacy: pelamar) ---
-    Route::middleware(['role:pelamar'])->group(function () {
+    Route::middleware(['role:staff'])->group(function () {
         // Manage Suppliers
         Route::post('/supplier', [SpkController::class, 'storeSupplier'])->name('supplier.store');
         Route::put('/supplier/{id}', [SpkController::class, 'updateSupplier'])->name('supplier.update');
@@ -72,7 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- AKSES FILE (Admin, Manager & Staff Boleh Lihat) ---
     // Route ini digunakan untuk membuka file PDF lamaran/supplier
-    Route::middleware(['role:admin,hrd,pelamar'])->group(function() {
+    Route::middleware(['role:admin,hrd,staff'])->group(function() {
         Route::get('/view-pdf/{path}', [SpkController::class, 'viewPdf'])
             ->where('path', '.*') // Regex agar bisa membaca path folder
             ->name('view.pdf');

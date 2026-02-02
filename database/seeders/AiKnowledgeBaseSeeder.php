@@ -14,32 +14,32 @@ class AiKnowledgeBaseSeeder extends Seeder
     {
         $rules = [
             [
-                'topic' => 'Protokol Rekrutmen Hukum (Legal)',
-                'content' => 'Untuk posisi Legal/Hukum: 1. Prioritaskan kandidat dengan pemahaman mendalam tentang Hukum Korporasi dan Litigasi. 2. Wajib memiliki integritas 100% (Cek latar belakang kriminal). 3. Soft skill utama: Negosiasi dan Ketelitian. 4. Jangan pernah merekomendasikan profil IT untuk posisi Hukum kecuali ada kebutuhan khusus (Legal Tech).',
+                'topic' => 'Protokol Seleksi Supplier',
+                'content' => 'Untuk pemilihan Supplier: 1. Prioritaskan harga yang kompetitif namun tetap menjaga kualitas. 2. Wajib memverifikasi legalitas usaha supplier. 3. Kecepatan pengiriman adalah faktor krusial untuk menjaga stok.',
                 'author' => 'System (Grandmaster Rule)',
                 'is_active' => true,
             ],
             [
-                'topic' => 'Protokol Rekrutmen IT (Tech)',
-                'content' => 'Untuk posisi IT/Tech: 1. Validasi skill coding via GitHub atau Portfolio (jangan percaya CV saja). 2. Cek pemahaman System Design untuk level Senior. 3. Soft skill utama: Problem Solving dan Continuous Learning. 4. Bedakan antara "Coder" (hanya ngetik kode) dan "Engineer" (membangun solusi).',
+                'topic' => 'Standar Kualitas Barang',
+                'content' => 'Kualitas Barang: 1. Barang harus sesuai dengan spesifikasi teknis yang diminta. 2. Toleransi cacat produk maksimal 1%. 3. Supplier wajib memberikan garansi atau kebijakan retur yang jelas.',
                 'author' => 'System (Grandmaster Rule)',
                 'is_active' => true,
             ],
             [
-                'topic' => 'Standar Penilaian Eksekutif',
-                'content' => 'Untuk level Manajer ke atas: 1. Bobot Kepemimpinan & Visi Strategis > Skill Teknis. 2. Gunakan metode STAR (Situation, Task, Action, Result) untuk menggali pengalaman masa lalu. 3. Cari indikator "Growth Mindset" dan "Resilience" (AQ tinggi).',
+                'topic' => 'Evaluasi Tempo Pembayaran',
+                'content' => 'Tempo Pembayaran: 1. Utamakan supplier yang memberikan tempo pembayaran (TOP) minimal 30 hari. 2. Diskon tunai (Cash Discount) bisa dipertimbangkan jika signifikan. 3. Hindari supplier yang meminta DP besar di awal tanpa rekam jejak jelas.',
                 'author' => 'System (Grandmaster Rule)',
                 'is_active' => true,
             ],
             [
-                'topic' => 'Deteksi Red Flag (Universal)',
-                'content' => 'Waspadai: 1. "Job Hopping" (pindah tiap < 1 tahun) tanpa alasan jelas. 2. Gap masa kerja > 6 bulan tanpa aktivitas produktif. 3. Inkonsistensi tanggal di CV vs LinkedIn. 4. Jawaban wawancara yang terlalu umum/normatif.',
+                'topic' => 'Indikator Red Flag Supplier',
+                'content' => 'Waspadai: 1. Perubahan harga mendadak tanpa pemberitahuan. 2. Sering terlambat mengirim barang > 3 kali dalam sebulan. 3. Komunikasi yang sulit dan respon lambat saat ada komplain.',
                 'author' => 'System (Grandmaster Rule)',
                 'is_active' => true,
             ],
             [
-                'topic' => 'Filosofi Perusahaan',
-                'content' => 'Kita mencari "Missionaries" bukan "Mercenaries". Orang yang peduli dengan misi perusahaan akan bertahan lebih lama daripada yang hanya mengejar gaji. Utamakan Culture Fit.',
+                'topic' => 'Filosofi Kemitraan',
+                'content' => 'Kita mencari "Strategic Partners" bukan sekadar penjual. Supplier yang proaktif memberikan solusi dan inovasi produk akan diprioritaskan untuk kontrak jangka panjang.',
                 'author' => 'System (Grandmaster Rule)',
                 'is_active' => true,
             ],

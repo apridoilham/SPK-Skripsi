@@ -1,12 +1,12 @@
 <x-app-layout>
     @php
         $totalUsers = $users->count();
-        $pelamarCount = $users->where('role', 'pelamar')->count();
-        $hrdCount = $users->where('role', 'hrd')->count();
+        $staffCount = $users->where('role', 'staff')->count();
+        $managerCount = $users->where('role', 'hrd')->count();
         $adminCount = $users->where('role', 'admin')->count();
         
-        $pelamarPct = $totalUsers > 0 ? ($pelamarCount / $totalUsers) * 100 : 0;
-        $hrdPct = $totalUsers > 0 ? ($hrdCount / $totalUsers) * 100 : 0;
+        $staffPct = $totalUsers > 0 ? ($staffCount / $totalUsers) * 100 : 0;
+        $managerPct = $totalUsers > 0 ? ($managerCount / $totalUsers) * 100 : 0;
         $adminPct = $totalUsers > 0 ? ($adminCount / $totalUsers) * 100 : 0;
     @endphp
 
@@ -54,13 +54,13 @@
                     </div>
                 </div>
 
-                <!-- Candidates -->
+                <!-- Staff Purchasing -->
                 <div class="bg-white overflow-hidden shadow-sm border border-gray-200 rounded">
                     <div class="p-5 border-l-4 border-[#232f3e]">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ __('Pelamar') }}</p>
-                                <p class="text-2xl font-bold text-[#232f3e] mt-1">{{ $pelamarCount }}</p>
+                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ __('Staff') }}</p>
+                                <p class="text-2xl font-bold text-[#232f3e] mt-1">{{ $staffCount }}</p>
                             </div>
                             <div class="p-2 bg-slate-50 rounded">
                                 <svg class="w-6 h-6 text-[#232f3e]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,13 +71,13 @@
                     </div>
                 </div>
 
-                <!-- HRD -->
+                <!-- Manager Purchasing -->
                 <div class="bg-white overflow-hidden shadow-sm border border-gray-200 rounded">
                     <div class="p-5 border-l-4 border-blue-600">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ __('HRD') }}</p>
-                                <p class="text-2xl font-bold text-[#232f3e] mt-1">{{ $hrdCount }}</p>
+                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ __('Manager') }}</p>
+                                <p class="text-2xl font-bold text-[#232f3e] mt-1">{{ $managerCount }}</p>
                             </div>
                             <div class="p-2 bg-blue-50 rounded">
                                 <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -300,8 +300,8 @@
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">{{ __('Role') }}</label>
                                 <select name="role" x-model="form.role" class="w-full rounded border-gray-300 focus:border-[#232f3e] focus:ring focus:ring-[#232f3e] focus:ring-opacity-50 shadow-sm">
-                                    <option value="pelamar">{{ __('Pelamar') }}</option>
-                                    <option value="hrd">{{ __('HRD') }}</option>
+                                    <option value="staff">{{ __('Staff') }}</option>
+                                    <option value="hrd">{{ __('Manager') }}</option>
                                     <option value="admin">{{ __('Admin') }}</option>
                                 </select>
                             </div>
@@ -322,8 +322,8 @@
     </div>
     <div id="admin-dashboard-config" data-config="{{ json_encode([
         'stats' => [
-            'pelamar' => $pelamarPct,
-            'hrd' => $hrdPct,
+            'staff' => $staffPct,
+            'manager' => $managerPct,
             'admin' => $adminPct
         ]
     ]) }}"></div>
@@ -332,7 +332,7 @@
             Alpine.data('adminDashboard', () => ({
                 showModal: false, 
                 editMode: false, 
-                form: { id: null, name: '', email: '', password: '', role: 'pelamar' },
+                form: { id: null, name: '', email: '', password: '', role: 'staff' },
                 stats: {},
 
                 init() {
@@ -346,7 +346,7 @@
                 resetForm() {
                     this.showModal = true;
                     this.editMode = false;
-                    this.form = { id: null, name: '', email: '', password: '', role: 'pelamar' };
+                    this.form = { id: null, name: '', email: '', password: '', role: 'staff' };
                 },
 
                 editUser(userJson) {

@@ -20,7 +20,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', // admin, hrd, pelamar
+        'role', // admin, manager (was hrd), staff (was pelamar)
         'profile_photo_path',
     ];
 
@@ -47,9 +47,9 @@ class User extends Authenticatable
         ];
     }
 
-    // Relasi langsung ke Pelamar (One to One)
-    public function pelamar()
+    // Relasi ke Supplier (Staff creates multiple suppliers)
+    public function suppliers()
     {
-        return $this->hasOne(Pelamar::class, 'user_id');
+        return $this->hasMany(Supplier::class, 'user_id');
     }
 }

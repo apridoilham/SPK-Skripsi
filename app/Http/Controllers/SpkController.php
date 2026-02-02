@@ -241,6 +241,55 @@ class SpkController extends Controller
         return redirect()->back()->with('success', __('Supplier status updated.'));
     }
 
+    public function storeUser(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:admin,hrd,staff',
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+        ]);
+
+        $this->logActivity(Auth::user()->name . " created new user: {$request->name} ({$request->role}).", 'warning');
+
+        return redirect()->back()->with('success', __('User created successfully.'));
+    }
+
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'role' => 'required|in:admin,hrd,staff',
+        ]);
+
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+        ];
+
+        if ($request->filled('password')) {
+            $request->validate(['password' => 'string|min:8']);
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        $this->logActivity(Auth::user()->name . " updated user: {$request->name}.", 'warning');
+
+        return redirect()->back()->with('success', __('User updated successfully.'));
+    }
+
     public function deleteUser($id)
     { 
         $user = User::findOrFail($id); 

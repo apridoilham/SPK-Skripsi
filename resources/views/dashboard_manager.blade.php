@@ -64,35 +64,7 @@
             
             <!-- AI Decision Explainer Section -->
             <div class="bg-gradient-to-br from-[#232f3e] to-[#1a232e] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden border border-gray-700" 
-                 x-data="{ 
-                    explaining: false, 
-                    explanation: '', 
-                    rankingData: @json($ranking),
-                    explainDecision() { 
-                        if (this.rankingData.length === 0) {
-                            Swal.fire('Error', 'No ranking data available to explain.', 'error');
-                            return;
-                        }
-                        this.explaining = true; 
-                        this.explanation = '';
-                        fetch('{{ route('chat.explain.decision') }}', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                            body: JSON.stringify({ ranking_data: this.rankingData })
-                        })
-                        .then(res => res.json())
-                        .then(data => { 
-                            if(data.error) throw new Error(data.error);
-                            this.explanation = data.reply; 
-                            this.explaining = false; 
-                        })
-                        .catch(err => { 
-                            console.error(err); 
-                            Swal.fire('AI Error', 'Failed to generate explanation. ' + err.message, 'error');
-                            this.explaining = false; 
-                        });
-                    }
-                 }">
+                 x-data="aiExplainer({{ Js::from($ranking ?? []) }})">
                 
                 <!-- Background Decoration -->
                 <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
@@ -404,7 +376,7 @@
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{{ __('Candidate Name') }}</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{{ __('Supplier Name') }}</th>
                                     @foreach($kriterias as $k)
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center group cursor-help" title="{{ $k->nama }}">
                                         <div class="flex flex-col items-center gap-1">
@@ -596,6 +568,7 @@
                 'chat_apply' => route('chat.apply'),
                 'chat_teach' => route('chat.teach'),
                 'chat_analyze' => route('chat.analyze'),
+                'chat_explain' => route('chat.explain.decision'),
                 'laporan_cetak' => route('laporan.cetak'),
             ],
             'csrf' => csrf_token(),
@@ -817,6 +790,38 @@
         });
 
         document.addEventListener('alpine:init', () => {
+            Alpine.data('aiExplainer', (initialRanking = []) => ({
+                explaining: false,
+                explanation: '',
+                ranking: initialRanking,
+                async explainDecision() {
+                    this.explaining = true;
+                    this.explanation = '';
+                    
+                    try {
+                        const res = await fetch(routes.chat_explain, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': APP_CONFIG.csrf 
+                            },
+                            body: JSON.stringify({ ranking_data: this.ranking })
+                        });
+                        
+                        const data = await res.json();
+                        
+                        if(data.error) throw new Error(data.error);
+                        
+                        this.explanation = data.reply;
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('AI Error', 'Failed to generate explanation. ' + (err.message || 'Unknown error'), 'error');
+                    } finally {
+                        this.explaining = false;
+                    }
+                }
+            }));
+
              Alpine.data('hrdDashboard', () => ({
                     showSettings: false,
                     showPrint: false,
