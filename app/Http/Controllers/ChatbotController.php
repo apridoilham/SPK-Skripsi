@@ -81,8 +81,9 @@ class ChatbotController extends Controller
         }
 
         // 1. System Prompt - ELITE EXPERT MODE
-        $systemPrompt = "ROLE:Elite Chief Human Capital Officer & Senior Data Scientist.
-        TONE:Highly Professional, Strategic, Detailed, and Insightful.
+        $systemPrompt = "ROLE: Elite Chief Human Capital Officer & Senior Data Scientist (Indonesian Speaking).
+        TONE: Highly Professional, Strategic, Detailed, and Insightful.
+        LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
         CTX:$infoKriteria
         $knowledgeContext
         RULES:
@@ -90,6 +91,7 @@ class ChatbotController extends Controller
         2.STRATEGIC VALUE: Connect every insight to business impact and long-term organizational goals.
         3.CUSTOMIZATION: Use the specific criteria context to tailor advice perfectly.
         4.PROACTIVE: Suggest related concepts, risks, or opportunities user might have missed.
+        5.STRICT_LANGUAGE: All responses MUST be in formal, professional Indonesian.
         JSON_FMT:[{\"kode\":\"C1\",\"nama\":\"..\",\"bobot\":30,\"jenis\":\"benefit\",\"opsi\":[\"..\"]}]";
 
         // 2. Chat History - EXTENDED CONTEXT
@@ -181,14 +183,15 @@ class ChatbotController extends Controller
         }
 
         $systemPrompt = "ROLE:Lead Data Scientist & HR Strategist. GOAL:Provide Deep-Dive Analytical Explanation of SAW Results.
+        LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
         OUT(Markdown):
-        1. **Strategic Executive Summary**: Why this ranking matters for the business.
-        2. **Winner's Competitive Advantage**: Detailed breakdown of the top candidate's strengths relative to the specific criteria weights.
-        3. **Gap Analysis (Rank 1 vs Rank 2)**: Precise statistical difference explanation. What exactly did #2 miss?
-        4. **Sensitivity Note**: How stable is this result? (e.g., if criteria X changed slightly, would the winner change?)
-        5. **Actionable Recommendation**: Next steps (Interview focus, negotiation leverage, etc.).
+        1. **Ringkasan Eksekutif Strategis**: Mengapa peringkat ini penting bagi bisnis.
+        2. **Keunggulan Kompetitif Pemenang**: Rincian kekuatan kandidat teratas relatif terhadap bobot kriteria tertentu.
+        3. **Analisis Kesenjangan (Peringkat 1 vs Peringkat 2)**: Penjelasan perbedaan statistik yang tepat. Apa sebenarnya yang dilewatkan #2?
+        4. **Catatan Sensitivitas**: Seberapa stabil hasil ini? (misalnya, jika kriteria X sedikit berubah, apakah pemenang akan berubah?)
+        5. **Rekomendasi Tindakan**: Langkah selanjutnya (Fokus wawancara, leverage negosiasi, dll).
         
-        Use bolding, lists, and professional formatting. Be exhaustive. Generate a LONG, DETAILED report.";
+        Use bolding, lists, and professional formatting. Be exhaustive. Generate a LONG, DETAILED report in INDONESIAN.";
 
         try {
             $client = \Illuminate\Support\Facades\Http::withHeaders([
@@ -316,6 +319,7 @@ class ChatbotController extends Controller
 
         $prompt = "ROLE:Elite Talent Auditor & Psychologist. 
         TASK:Perform a Deep-Dive Forensic Analysis of the Candidate's CV.
+        LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY for all content values.
         
         METHODOLOGY (CHAIN OF THOUGHT):
         1. First, scan for 'Red Flags' (gaps, inconsistencies, formatting errors).
@@ -327,6 +331,7 @@ class ChatbotController extends Controller
         1. ACCURACY: Do not hallucinate. If evidence is missing, score LOW (1).
         2. EVIDENCE: You MUST quote the exact text from the CV that justifies every score.
         3. CRITICALITY: Be strict. Do not give high scores easily. High scores require concrete proof of excellence.
+        4. LANGUAGE: The 'summary', 'recommendation', 'reason', 'evidence', and descriptions MUST be in INDONESIAN.
         
         $knowledgeContext
         
@@ -340,21 +345,21 @@ class ChatbotController extends Controller
         
         OUTPUT FORMAT (JSON ONLY):
         {
-            \"_analysis_chain\": \"Briefly explain your thinking process here before scoring...\",
-            \"summary\": \"Executive Summary (Professional & Insightful)\",
-            \"recommendation\": \"HIGHLY RECOMMENDED / RECOMMENDED / CONSIDER / NOT RECOMMENDED\",
-            \"match_confidence\": \"HIGH / MEDIUM / LOW\",
-            \"red_flags\": [\"Flag 1\", \"Flag 2\"],
+            \"_analysis_chain\": \"Jelaskan proses berpikir Anda secara singkat di sini sebelum memberikan skor... (Bahasa Indonesia)\",
+            \"summary\": \"Ringkasan Eksekutif (Profesional & Berwawasan Luas dalam Bahasa Indonesia)\",
+            \"recommendation\": \"SANGAT DIREKOMENDASIKAN / DIREKOMENDASIKAN / DIPERTIMBANGKAN / TIDAK DIREKOMENDASIKAN\",
+            \"match_confidence\": \"TINGGI / SEDANG / RENDAH\",
+            \"red_flags\": [\"Bendera Merah 1\", \"Bendera Merah 2\"],
             \"psychometrics\": {
-                \"leadership_potential\": \"High/Med/Low - Reason\",
+                \"leadership_potential\": \"Tinggi/Sedang/Rendah - Alasan\",
                 \"culture_fit_score\": 1-100,
-                \"work_style\": \"Description\",
-                \"dominant_traits\": [\"Trait 1\", \"Trait 2\"]
+                \"work_style\": \"Deskripsi Gaya Kerja\",
+                \"dominant_traits\": [\"Sifat Dominan 1\", \"Sifat Dominan 2\"]
             },
-            \"interview_questions\": [\"Behavioral Q1\", \"Technical Q2\", \"Cultural Q3\"],
-            \"competency_gap\": [\"Major Gap 1\", \"Minor Gap 2\"],
+            \"interview_questions\": [\"Pertanyaan Perilaku 1\", \"Pertanyaan Teknis 2\", \"Pertanyaan Kultural 3\"],
+            \"competency_gap\": [\"Kesenjangan Utama 1\", \"Kesenjangan Minor 2\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"Deep reasoning linking experience to criteria.\",\"evidence\":\"Verbatim quote\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"Alasan mendalam menghubungkan pengalaman dengan kriteria.\",\"evidence\":\"Kutipan asli dari CV\"}
             }
         }";
 
