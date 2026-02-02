@@ -55,15 +55,19 @@ class DatabaseSeeder extends Seeder
         ]);
         */
         
-        // 4. Seeder Kriteria Default (Agar sistem langsung bisa dipakai)
+        // 4. Seeder Kriteria Default (Sesuai Permintaan User)
         Kriteria::insert([
-            ['kode' => 'C1', 'nama' => 'Pendidikan', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['SMA','D3','S1','S2','S3'])],
-            ['kode' => 'C2', 'nama' => 'Pengalaman', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['0 Tahun','1 Tahun','2 Tahun','3 Tahun','>4 Tahun'])],
-            ['kode' => 'C3', 'nama' => 'Sertifikat', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['0','1','2','3','>3'])],
-            ['kode' => 'C4', 'nama' => 'Kesehatan', 'bobot' => 0.25, 'jenis' => 'benefit', 'opsi' => json_encode(['Buruk','Kurang','Cukup','Baik','Sangat Baik'])],
+            ['kode' => 'C1', 'nama' => 'Pengalaman Kerja', 'bobot' => 0.30, 'jenis' => 'benefit', 'opsi' => json_encode(['< 1 Tahun', '1-2 Tahun', '2-4 Tahun', '4-6 Tahun', '> 6 Tahun'])],
+            ['kode' => 'C2', 'nama' => 'Pendidikan Terakhir', 'bobot' => 0.20, 'jenis' => 'benefit', 'opsi' => json_encode(['SMA', 'D3', 'S1', 'S2', 'S3'])],
+            ['kode' => 'C3', 'nama' => 'Skill Teknis', 'bobot' => 0.20, 'jenis' => 'benefit', 'opsi' => json_encode(['Pemula', 'Dasar', 'Menengah', 'Mahir', 'Expert'])],
+            ['kode' => 'C4', 'nama' => 'Ekspektasi Gaji (Juta)', 'bobot' => 0.20, 'jenis' => 'cost', 'opsi' => json_encode(['< 5 Juta', '5-8 Juta', '8-10 Juta', '10-15 Juta', '> 15 Juta'])],
+            ['kode' => 'C5', 'nama' => 'Jarak Rumah (KM)', 'bobot' => 0.10, 'jenis' => 'cost', 'opsi' => json_encode(['< 5 KM', '5-10 KM', '10-20 KM', '20-30 KM', '> 30 KM'])],
         ]);
 
         // 5. Seed Knowledge Base AI
         $this->call(AiKnowledgeBaseSeeder::class);
+        
+        // 6. Seed Data Pelamar (Budi, Siti, Andi) - DIHAPUS SESUAI PERMINTAAN
+        // $this->call(PelamarSeeder::class);
     }
 }

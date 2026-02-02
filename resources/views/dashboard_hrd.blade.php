@@ -39,10 +39,10 @@
                         <svg class="w-4 h-4 text-gray-500 group-hover:text-[#232f3e] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         {{ __('Set Criteria') }}
                     </button>
-                    <button @click="showMatrix = true" class="px-4 py-2.5 text-xs font-bold text-[#232f3e] bg-white border border-gray-300 rounded hover:bg-gray-100 shadow-sm transition-all flex items-center gap-2 group">
+                    <a href="{{ route('detail.perhitungan') }}" class="px-4 py-2.5 text-xs font-bold text-[#232f3e] bg-white border border-gray-300 rounded hover:bg-gray-100 shadow-sm transition-all flex items-center gap-2 group">
                         <svg class="w-4 h-4 text-gray-500 group-hover:text-[#232f3e] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         {{ __('Calculation Details') }}
-                    </button>
+                    </a>
                     <button @click="generatePdf()" class="px-4 py-2.5 text-xs font-bold text-white bg-[#232f3e] border border-gray-600 rounded hover:bg-[#1a232e] shadow-sm transition-all flex items-center gap-2 transform hover:-translate-y-0.5">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         {{ __('Print Report') }}
@@ -695,147 +695,236 @@
                             const result = await res.json();
 
                             if(result.success) {
-                                // Tampilkan Summary dengan Reasoning
-                                let detailsHtml = '<div class="mt-3 space-y-2 border-t border-slate-100 pt-3">';
+                                // Extract Data
                                 const details = result.data.details || {}; 
                                 const psychometrics = result.data.psychometrics || {};
                                 const redFlags = result.data.red_flags || result.data.timeline_audit || [];
                                 const interviewQuestions = result.data.interview_questions || [];
                                 const competencyGap = result.data.competency_gap || [];
 
-                                // --- BAGIAN 1: RED FLAGS & RISK AUDIT ---
-                                if (redFlags.length > 0) {
-                                    detailsHtml += `<div class="bg-red-50 border border-red-100 rounded-lg p-3 mb-3">
-                                        <h4 class="text-xs font-bold text-red-800 flex items-center gap-1 mb-2">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                            ${trans.critical_red_flags}
-                                        </h4>
-                                        <ul class="space-y-1">`;
-                                    redFlags.forEach(flag => {
-                                        detailsHtml += `<li class="text-[10px] text-red-700 flex items-start gap-1.5 font-medium"><span class="mt-0.5">•</span>${flag}</li>`;
-                                    });
-                                    detailsHtml += `</ul></div>`;
+                                // --- COMPONENT BUILDERS ---
+                                
+                                // 1. Risk Analysis (Red Flags & Gaps)
+                                let risksHtml = '';
+                                if (redFlags.length > 0 || competencyGap.length > 0) {
+                                    risksHtml += '<div class="mb-4">';
+                                    
+                                    if (redFlags.length > 0) {
+                                        risksHtml += `<div class="bg-red-50 border border-red-100 rounded-lg p-3 mb-2">
+                                            <h4 class="text-xs font-bold text-red-800 flex items-center gap-1 mb-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                CRITICAL RED FLAGS
+                                            </h4>
+                                            <ul class="space-y-1">
+                                                ${redFlags.map(flag => `<li class="text-[11px] text-red-700 flex items-start gap-1.5 font-medium"><span class="mt-0.5">•</span>${flag}</li>`).join('')}
+                                            </ul>
+                                        </div>`;
+                                    }
+
+                                    if(competencyGap.length > 0) {
+                                       risksHtml += `<div class="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                                           <h4 class="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wide flex items-center gap-1">
+                                               <span class="text-amber-500 text-sm">⚠️</span> ${trans.competency_gaps}
+                                           </h4>
+                                           <ul class="space-y-1">
+                                               ${competencyGap.map(g => `<li class="text-[11px] text-amber-700 flex items-start gap-1.5"><span class="mt-0.5">•</span>${g}</li>`).join('')}
+                                           </ul>
+                                       </div>`;
+                                    }
+                                    risksHtml += '</div>';
                                 }
 
-                                // --- BAGIAN 2: PSIKOMETRIK & CULTURE FIT ---
+                                // 2. Psychometrics Card (Left Sidebar)
+                                let psychometricsHtml = '';
                                 if (Object.keys(psychometrics).length > 0) {
-                                    detailsHtml += `<div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mb-3">
-                                        <h4 class="text-xs font-bold text-indigo-800 flex items-center gap-1 mb-2">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                    psychometricsHtml += `<div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm h-fit">
+                                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                                             ${trans.deep_psychometrics}
                                         </h4>
-                                        <div class="grid grid-cols-2 gap-2 text-[10px] mb-2">
-                                            <div class="bg-white p-2 rounded border border-indigo-100">
-                                                <span class="text-indigo-400 block text-[9px] uppercase tracking-wider">${trans.leadership_potential}</span>
-                                                <span class="font-bold text-indigo-900 text-xs">${psychometrics.leadership_potential || psychometrics.leadership || '-'}</span>
-                                            </div>
-                                            <div class="bg-white p-2 rounded border border-indigo-100">
-                                                <span class="text-indigo-400 block text-[9px] uppercase tracking-wider">${trans.culture_fit_score}</span>
-                                                <div class="flex items-center gap-2">
-                                                    <div class="flex-1 h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                                                        <div class="h-full bg-indigo-500 rounded-full" style="width: ${psychometrics.culture_fit_score || 0}%"></div>
-                                                    </div>
-                                                    <span class="font-bold text-indigo-900 text-xs">${psychometrics.culture_fit_score || 0}%</span>
+                                        
+                                        <div class="space-y-4">
+                                            <div>
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-slate-500 font-medium">${trans.leadership_potential}</span>
+                                                    <span class="text-indigo-700 font-bold">${psychometrics.leadership_potential || psychometrics.leadership || '-'}</span>
+                                                </div>
+                                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${(psychometrics.leadership_potential === 'High' ? 90 : (psychometrics.leadership_potential === 'Medium' ? 60 : 30))}%"></div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="bg-white p-2 rounded border border-indigo-100 mb-2">
-                                            <span class="text-indigo-400 block text-[9px] uppercase tracking-wider">${trans.work_style}</span>
-                                            <span class="font-medium text-indigo-800 text-[10px]">${psychometrics.work_style || '-'}</span>
-                                        </div>
-                                        <div class="flex flex-wrap gap-1">
-                                            ${(psychometrics.dominant_traits || psychometrics.traits || []).map(t => `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[9px] font-bold border border-indigo-200 tracking-wide">${t}</span>`).join('')}
+
+                                            <div>
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-slate-500 font-medium">${trans.culture_fit_score}</span>
+                                                    <span class="text-indigo-700 font-bold">${psychometrics.culture_fit_score || 0}%</span>
+                                                </div>
+                                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${psychometrics.culture_fit_score || 0}%"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="bg-slate-50 p-2 rounded border border-slate-100">
+                                                <span class="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Work Style</span>
+                                                <span class="text-xs text-slate-700 font-medium block leading-relaxed">${psychometrics.work_style || '-'}</span>
+                                            </div>
+
+                                            <div class="flex flex-wrap gap-1.5 pt-2">
+                                                ${(psychometrics.dominant_traits || psychometrics.traits || []).map(t => `<span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold border border-indigo-100">${t}</span>`).join('')}
+                                            </div>
                                         </div>
                                     </div>`;
                                 }
 
-                                // --- BAGIAN 3: GAP ANALYSIS & INTERVIEW QUESTIONS ---
-                                if (competencyGap.length > 0 || interviewQuestions.length > 0) {
-                                     detailsHtml += `<div class="grid grid-cols-1 gap-2 mb-3">`;
-                                     
-                                     if(competencyGap.length > 0) {
-                                       detailsHtml += `<div class="bg-amber-50 border border-amber-100 rounded-lg p-3">
-                                           <h4 class="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wide">${trans.competency_gaps}</h4>
-                                           <ul class="space-y-1">
-                                               ${competencyGap.map(g => `<li class="text-[10px] text-amber-700 flex items-start gap-1.5"><span class="text-amber-400 mt-0.5">⚠️</span>${g}</li>`).join('')}
-                                           </ul>
-                                       </div>`;
-                                    }
-
-                                    if(interviewQuestions.length > 0) {
-                                       detailsHtml += `<div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
-                                           <h4 class="text-xs font-bold text-white mb-2 uppercase tracking-wide flex items-center gap-2">
-                                               <svg class="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                               ${trans.interview_questions}
-                                           </h4>
-                                           <ul class="space-y-2">
-                                                ${interviewQuestions.map(q => `<li class="text-[10px] text-slate-300 flex items-start gap-2 italic">
-                                                    <span class="text-emerald-500 font-bold not-italic">?</span> "${q}"
-                                                </li>`).join('')}
-                                            </ul>
-                                        </div>`;
-                                     }
-                                     
-                                     detailsHtml += `</div>`;
-                                }
-
-                                // --- BAGIAN 4: DETAIL SKOR ---
+                                // 3. Detail Scores (Main Content)
+                                let scoresHtml = '';
                                 if (Object.keys(details).length > 0) {
+                                    scoresHtml += '<div class="space-y-2">';
                                     for (const [key, item] of Object.entries(details)) {
-                                        // Tentukan warna badge berdasarkan skor
                                         let scoreClass = 'bg-slate-100 text-slate-600 border-slate-200';
                                         let reasonIcon = '';
                                         
                                         if (item.score >= 4) {
                                             scoreClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                                            reasonIcon = '<span class="text-emerald-500 mr-1">✓</span>';
+                                            reasonIcon = '<span class="text-emerald-500 mr-2 text-lg">✓</span>';
                                         } else if (item.score === 3) {
                                             scoreClass = 'bg-amber-50 text-amber-700 border-amber-200';
-                                            reasonIcon = '<span class="text-amber-500 mr-1">●</span>';
+                                            reasonIcon = '<span class="text-amber-500 mr-2 text-lg">●</span>';
                                         } else {
                                             scoreClass = 'bg-red-50 text-red-700 border-red-200';
-                                            reasonIcon = '<span class="text-red-500 mr-1">⚠️</span>';
+                                            reasonIcon = '<span class="text-red-500 mr-2 text-lg">⚠️</span>';
                                         }
 
-                                        detailsHtml += `
-                                            <div class="flex justify-between items-start text-xs bg-slate-50 p-2.5 rounded border border-slate-100 hover:bg-white transition-colors mb-1">
-                                                <div class="text-left pr-3">
-                                                    <span class="font-bold text-[#232f3e] block mb-0.5">${key}</span>
-                                                    <div class="text-slate-500 leading-snug flex items-start">
+                                        scoresHtml += `
+                                            <div class="flex items-start text-sm bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
+                                                <div class="flex-1 pr-4 space-y-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-bold text-slate-800 uppercase tracking-wide text-xs bg-slate-100 px-2 py-1 rounded border border-slate-200">${key}</span>
+                                                    </div>
+                                                    
+                                                    <div class="text-slate-700 text-sm leading-relaxed flex items-start gap-2">
                                                         <span class="shrink-0 mt-0.5">${reasonIcon}</span>
                                                         <span>${item.reason}</span>
                                                     </div>
+
+                                                    ${item.evidence ? `
+                                                    <div class="mt-2 bg-slate-50 border-l-2 border-slate-300 pl-3 py-1.5 pr-2 rounded-r text-xs text-slate-500 italic">
+                                                        <span class="font-semibold text-slate-400 not-italic text-[10px] uppercase block mb-0.5">Evidence from CV:</span>
+                                                        "${item.evidence}"
+                                                    </div>` : ''}
                                                 </div>
-                                                <span class="font-bold ${scoreClass} border px-2 py-1 rounded shrink-0 ml-2 shadow-sm text-[10px] w-16 text-center">Skor: ${item.score}</span>
+                                                <div class="flex flex-col items-center justify-center pl-4 border-l border-slate-100">
+                                                    <span class="text-[10px] text-slate-400 uppercase font-bold mb-1">Score</span>
+                                                    <span class="font-black ${scoreClass} text-xl border px-4 py-2 rounded-xl shadow-sm min-w-[3.5rem] text-center">${item.score}</span>
+                                                </div>
                                             </div>
                                         `;
                                     }
+                                    scoresHtml += '</div>';
                                 }
-                                detailsHtml += '</div>';
+
+                                // 4. Interview Questions
+                                let interviewHtml = '';
+                                if(interviewQuestions.length > 0) {
+                                   interviewHtml += `<div class="bg-slate-800 text-slate-300 rounded-xl p-4 shadow-sm mt-4">
+                                       <h4 class="text-xs font-bold text-white mb-3 uppercase tracking-wide flex items-center gap-2 pb-2 border-b border-slate-700">
+                                           <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                           ${trans.interview_questions}
+                                       </h4>
+                                       <ul class="space-y-3">
+                                            ${interviewQuestions.map(q => `<li class="text-[11px] flex items-start gap-2 italic leading-relaxed">
+                                                <span class="text-emerald-400 font-bold not-italic shrink-0 text-lg">?</span> <span>"${q}"</span>
+                                            </li>`).join('')}
+                                        </ul>
+                                    </div>`;
+                                }
+
+                                // --- ASSEMBLE GRID ---
+                                // 2-Column Layout: Left (35%) | Right (65%)
+                                let gridHtml = `
+                                <div class="grid grid-cols-12 gap-6 mt-2 text-left">
+                                    <!-- Column 1: Profile & Questions (4/12) -->
+                                    <div class="col-span-4 flex flex-col">
+                                        ${psychometricsHtml}
+                                        ${interviewHtml}
+                                    </div>
+
+                                    <!-- Column 2: Detailed Scores & Risks (8/12) -->
+                                    <div class="col-span-8">
+                                        <!-- Risk Analysis First (If Critical) -->
+                                        ${risksHtml}
+                                        
+                                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                            <h4 class="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                Scoring Analysis
+                                            </h4>
+                                            ${scoresHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                                
+                                // Determine Header Color based on Recommendation
+                                let headerColor = 'bg-slate-800';
+                                let headerText = 'text-white';
+                                let rec = (result.data.recommendation || '').toUpperCase();
+                                
+                                if(rec.includes('HIGHLY') || rec.includes('RECOMMENDED')) {
+                                    headerColor = 'bg-emerald-600';
+                                } else if (rec.includes('NOT')) {
+                                    headerColor = 'bg-red-600';
+                                }
 
                                 await Swal.fire({
-                                    title: trans.ai_analysis_title,
-                                    html: `<div class="text-left text-sm text-slate-600 space-y-3">
-                                        <div class="flex items-center justify-between bg-slate-800 text-white p-3 rounded-lg shadow-sm">
-                                            <div>
-                                                <div class="text-[10px] uppercase tracking-wider opacity-70 font-bold">${trans.recommendation_label}</div>
-                                                <div class="font-bold text-base text-emerald-400">${result.data.recommendation || trans.considered}</div>
+                                    title: '',
+                                    html: `<div class="text-left text-slate-600 font-sans">
+                                        <!-- Header Hero -->
+                                        <div class="${headerColor} ${headerText} p-6 -mx-5 -mt-5 mb-6 rounded-t-lg shadow-md flex justify-between items-center relative overflow-hidden">
+                                            <div class="relative z-10">
+                                                <div class="text-xs uppercase tracking-widest opacity-80 font-bold mb-1">AI Recommendation</div>
+                                                <div class="font-extrabold text-3xl tracking-tight">${result.data.recommendation || trans.considered}</div>
                                             </div>
-                                            <div class="text-right">
-                                                <div class="text-[10px] uppercase tracking-wider opacity-70 font-bold">${trans.confidence_label}</div>
-                                                <div class="font-bold text-sm">${result.data.match_confidence || trans.medium}</div>
+                                            <div class="text-right relative z-10">
+                                                <div class="text-xs uppercase tracking-widest opacity-80 font-bold mb-1">Confidence Score</div>
+                                                <div class="font-bold text-2xl bg-white/20 px-3 py-1 rounded-lg backdrop-blur-sm inline-block">
+                                                    ${result.data.match_confidence || trans.medium}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Decor element -->
+                                            <div class="absolute -right-10 -bottom-10 opacity-10">
+                                                <svg class="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"></path></svg>
                                             </div>
                                         </div>
                                         
-                                        <p class="font-medium bg-slate-50 text-slate-700 p-3 rounded-lg border border-slate-200 text-xs leading-relaxed italic">
-                                            "${result.data.summary}"
-                                        </p>
+                                        <!-- Summary Box -->
+                                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg shadow-sm">
+                                            <div class="flex gap-3">
+                                                <div class="shrink-0 text-blue-500 mt-1">
+                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <h5 class="font-bold text-blue-900 text-sm mb-1 uppercase tracking-wide">Executive Summary</h5>
+                                                    <p class="text-sm text-blue-800 leading-relaxed italic">
+                                                        "${result.data.summary}"
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                         
-                                        ${detailsHtml}
-                                        <p class="text-[10px] text-slate-400 italic text-center mt-2">${trans.auto_filled_note}</p>
+                                        ${gridHtml}
+                                        
+                                        <p class="text-[10px] text-slate-400 italic text-center mt-6 border-t border-slate-100 pt-3">${trans.auto_filled_note}</p>
                                     </div>`,
-                                    icon: 'success',
-                                    width: '600px'
+                                    showConfirmButton: true,
+                                    confirmButtonText: 'Terapkan Hasil',
+                                    confirmButtonColor: '#10b981', // Emerald 500
+                                    width: '1100px',
+                                    padding: '0',
+                                    customClass: {
+                                        popup: 'swal-wide-popup rounded-xl overflow-hidden'
+                                    }
                                 });
 
                                 // Auto-fill Form

@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Chatbot Routes
     Route::post('/chat/send', [ChatbotController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/explain-calculation', [ChatbotController::class, 'explainCalculation'])->name('chat.explain'); // New Route
     Route::post('/chat/apply', [ChatbotController::class, 'applyCriteria'])->name('chat.apply');
     Route::post('/chat/analyze-cv', [ChatbotController::class, 'analyzeCv'])->name('chat.analyze');
     Route::post('/chat/teach', [ChatbotController::class, 'teachAi'])->name('chat.teach');
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- KHUSUS ROLE: HRD ---
     Route::middleware(['role:hrd'])->group(function () {
         // Logika Perhitungan SPK (SAW)
+        Route::get('/detail-perhitungan', [SpkController::class, 'detailPerhitungan'])->name('detail.perhitungan');
         Route::post('/hitung-ranking', [SpkController::class, 'prosesHitungRanking'])->name('ranking.hitung');
         Route::put('/nilai/{id}', [SpkController::class, 'updateNilai'])->name('nilai.update');
         Route::put('/status/{id}', [SpkController::class, 'updateStatus'])->name('status.update');

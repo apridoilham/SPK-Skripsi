@@ -82,12 +82,17 @@ class ChatbotController extends Controller
         // 4. System Prompt (Instruksi Utama untuk AI - LEVEL MAX/GRANDMASTER)
         $systemPrompt = "
         PERAN: 
-        Anda adalah CHCO (Chief Human Capital Officer) & Elite HR Auditor (Level Grandmaster).
-        Kecerdasan Anda setara dengan konsultan HR global termahal (McKinsey/BCG level).
-        Gaya bicara: Executive, Strategis, To-the-Point, dan Berbasis Data.
-        
-        FILOSOFI 'LEVEL MAX':
-        1.  **RUTHLESS TRUTH-SEEKING**: Jangan berikan jawaban normatif. Berikan kebenaran pahit jika perlu.
+        Anda adalah CHCO (Chief Human Capital Officer) & Senior Recruitment Consultant.
+        Anda bukan robot kaku, melainkan partner diskusi yang cerdas, luwes, dan sangat paham industri spesifik.
+        Gaya bicara: Profesional tapi Humanis (seperti berbicara dengan rekan kerja senior yang asik). Gunakan bahasa Indonesia yang mengalir, tidak baku/kaku, tapi tetap sopan.
+
+        FILOSOFI 'DEEP CUSTOMIZATION':
+        1.  **HINDARI TEMPLATE GENERIK**:
+            -   Jika user minta kriteria untuk 'DOKTER', JANGAN GUNAKAN kriteria umum (Komunikasi, Kerjasama).
+            -   GUNAKAN KRITERIA SPESIFIK: 'STR Aktif', 'Pengalaman Klinis', 'Penanganan Gawat Darurat'.
+            -   Jika user minta 'PROGRAMMER', gunakan: 'Algoritma', 'Clean Code', 'Tech Stack Match'.
+            -   Jika user minta 'AKUNTAN', gunakan: 'Sertifikasi Brevet', 'Ketelitian', 'Penguasaan PSAK'.
+            
         2.  **STRATEGIC FORESIGHT**: Selalu pikirkan dampak jangka panjang (3-5 tahun ke depan) dari setiap keputusan HR.
         3.  **RISK AVERSION**: Selalu peringatkan user tentang potensi risiko hukum, budaya, atau finansial.
         4.  **CONTEXT AWARENESS & ADAPTABILITY**: 
@@ -109,24 +114,27 @@ class ChatbotController extends Controller
         $knowledgeContext
         
         ATURAN MERESPONS:
-        1.  **JAWABAN BERBOBOT**: Jangan menjawab pendek. Berikan konteks 'Why', 'How', dan 'Risk'.
-            Contoh: Jika user tanya 'Bagaimana cara pecat karyawan?', jangan cuma kasih pasal UU. Berikan strategi komunikasi, mitigasi tuntutan hukum, dan cara menjaga moral tim sisa.
+        1.  **HUMAN TOUCH**: Mulailah dengan sapaan atau tanggapan yang natural. Jangan langsung menyodorkan data. Contoh: 'Wah, posisi Dokter Umum ya? Posisi ini krusial banget di akurasi diagnosis...'
+        2.  **JAWABAN BERBOBOT**: Jangan menjawab pendek. Berikan konteks 'Why', 'How', dan 'Risk'.
         
-        2.  **MODE PERANCANGAN KRITERIA (ACTION)**: 
+        3.  **MODE PERANCANGAN KRITERIA (ACTION)**: 
             JIKA DAN HANYA JIKA user meminta rekomendasi kriteria BARU (contoh: 'Buatkan kriteria untuk Staff IT' atau 'Staff Legal'):
-            - Analisis dulu role tersebut secara mendalam (Hard Skill vs Soft Skill).
-            - Berikan alasan strategis untuk setiap bobot.
-            - WAJIB sertakan JSON konfigurasi di bagian paling akhir jawaban untuk fitur 'Terapkan Otomatis'.
+            -   **STEP 1**: Identifikasi Hard Skill & Soft Skill unik untuk role tersebut.
+            -   **STEP 2**: Buat 4-5 Kriteria yang SANGAT SPESIFIK (Jangan gunakan nama generik seperti 'Wawancara' atau 'Tes Tulis').
+                *   Salah: 'Tes Kemampuan'
+                *   Benar: 'Live Coding Test' (untuk IT) atau 'Studi Kasus Medis' (untuk Dokter).
+            -   **STEP 3**: Berikan alasan strategis untuk setiap bobot.
+            -   **STEP 4**: WAJIB sertakan JSON konfigurasi di bagian paling akhir jawaban.
         
         FORMAT JSON (Hanya untuk Mode Perancangan Kriteria):
         |||JSON_START|||
         [
             { 
                 \"kode\": \"C1\", 
-                \"nama\": \"Nama Kriteria\", 
+                \"nama\": \"Nama Kriteria Spesifik (Misal: Penguasaan PHP)\", 
                 \"bobot\": 30, 
                 \"jenis\": \"benefit\",
-                \"opsi\": [\"Sangat Buruk\", \"Buruk\", \"Cukup\", \"Baik\", \"Sangat Baik\"]
+                \"opsi\": [\"Pemula\", \"Junior\", \"Middle\", \"Senior\", \"Expert\"]
             },
             ... (Pastikan total bobot 100)
         ]
@@ -151,18 +159,17 @@ class ChatbotController extends Controller
 
         try {
             // 5. Request ke Groq API
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey, 
                 'Content-Type'  => 'application/json',
             ])->post('https://api.groq.com/openai/v1/chat/completions', [
-                'model' => 'llama-3.3-70b-versatile', // Model Llama 3 yang cepat
+                'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
-                'temperature' => 0.6, // Kreativitas seimbang
+                'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
                 'max_tokens' => 1024
             ]);
 
-            // Fix: Tambahkan Type Hint agar editor mengenali method Laravel HTTP Client
-            /** @var \Illuminate\Http\Client\Response $response */
             if ($response->successful()) {
                 $responseData = $response->json();
                 $replyContent = $responseData['choices'][0]['message']['content'] ?? 'Maaf, tidak ada respon teks dari AI.';
@@ -183,6 +190,94 @@ class ChatbotController extends Controller
     /**
      * Menerapkan rekomendasi JSON dari AI langsung ke Database
      */
+    /**
+     * Menjelaskan detail perhitungan SAW
+     */
+    public function explainCalculation(Request $request)
+    {
+        $request->validate([
+            'data' => 'required|array'
+        ]);
+
+        $data = $request->input('data');
+        $apiKey = env('GROQ_API_KEY');
+
+        if (empty($apiKey)) {
+            return response()->json(['reply' => 'Error: API Key belum dikonfigurasi.'], 500);
+        }
+
+        // Build prompt from data
+        $promptContext = "Berikut adalah data perhitungan SPK metode SAW:\n\n";
+        
+        // 1. Kriteria
+        $promptContext .= "KRITERIA:\n";
+        foreach ($data['kriterias'] as $k) {
+            $promptContext .= "- {$k['nama']} ({$k['kode']}): Bobot {$k['bobot']}, Jenis {$k['jenis']}\n";
+        }
+
+        // 2. Data Awal (Sampel 3 teratas)
+        $promptContext .= "\nSAMPEL DATA AWAL:\n";
+        foreach (array_slice($data['matriksX'], 0, 3) as $x) {
+            $promptContext .= "- {$x['nama']}: " . json_encode(array_diff_key($x, ['nama' => ''])) . "\n";
+        }
+
+        // 3. Hasil Akhir (Top 3)
+        $promptContext .= "\nHASIL PERANGKINGAN (TOP 3):\n";
+        foreach (array_slice($data['ranking'], 0, 3) as $i => $r) {
+            $rank = $i + 1;
+            $promptContext .= "{$rank}. {$r['nama']} (Skor: {$r['skor_kalkulasi']})\n";
+        }
+
+        $systemPrompt = "
+        PERAN:
+        Anda adalah Asisten HRD yang ramah dan cerdas.
+        Tugas Anda adalah menjelaskan hasil perhitungan metode SAW dengan bahasa Indonesia yang santai, mudah dipahami, dan tidak kaku.
+        Hindari istilah matematika yang terlalu rumit. Fokus pada cerita di balik angka.
+
+        TUGAS:
+        1. Jelaskan secara sederhana kenapa metode SAW memberikan hasil seperti ini.
+        2. Ceritakan kenapa kandidat Peringkat 1 bisa menang (apa kelebihan utamanya?).
+        3. Bandingkan Peringkat 1 dengan Peringkat 2 (apa bedanya?).
+        4. Berikan saran praktis untuk HRD.
+
+        Gunakan format Markdown yang rapi.
+        ";
+
+        try {
+            $client = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type'  => 'application/json',
+            ]);
+
+            /** @var \Illuminate\Http\Client\Response $response */
+            $response = $client->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model'    => 'llama-3.3-70b-versatile', // Ganti ke Llama 3.3 (Model Aktif)
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'user', 'content' => $promptContext]
+                ],
+                'temperature' => 0.7,
+                'max_tokens'  => 1000,
+            ]);
+
+            $responseData = $response->json();
+
+            // DEBUG: Log response jika gagal
+            if (!isset($responseData['choices'][0]['message']['content'])) {
+                \Illuminate\Support\Facades\Log::error('Groq API Error', ['response' => $responseData]);
+                return response()->json([
+                    'reply' => 'Maaf, terjadi kesalahan saat menghubungi AI. Silakan coba lagi nanti.'
+                ], 500);
+            }
+
+            return response()->json([
+                'reply' => $responseData['choices'][0]['message']['content']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['reply' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function applyCriteria(Request $request)
     {
         $data = $request->input('criteria');
@@ -237,7 +332,12 @@ class ChatbotController extends Controller
             $text = $pdf->getText();
             
             // Limit text untuk menghindari token limit
-            $text = substr($text, 0, 8000); 
+            $text = substr($text, 0, 10000); 
+
+            // Validasi: Jika teks terlalu pendek (berarti PDF mungkin hasil scan gambar)
+            if (strlen(trim($text)) < 50) {
+                return response()->json(['success' => false, 'message' => 'Teks PDF tidak terbaca. Pastikan file adalah PDF berbasis teks, bukan hasil scan gambar.']);
+            }
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal membaca file PDF: ' . $e->getMessage()]);
         }
@@ -248,20 +348,20 @@ class ChatbotController extends Controller
             return response()->json(['success' => false, 'message' => 'Belum ada kriteria penilaian di sistem.']);
         }
 
-        // 3. Susun Prompt
+        // 3. Susun Prompt dengan Detail Kriteria yang Lebih Spesifik
         $criteriaContext = $kriterias->map(function($k) {
             $opsiStr = collect($k->opsi)->map(function($val, $key) {
-                return "   - Nilai " . ($key+1) . ": $val";
+                return "   - Skala " . ($key+1) . ": $val";
             })->join("\n");
             
-            return "Kriteria: {$k->nama} (Kode: {$k->kode})\nOpsi Penilaian:\n$opsiStr";
+            return "KRITERIA: {$k->nama} (Kode: {$k->kode})\nDESKRIPSI SKALA PENILAIAN:\n$opsiStr";
         })->join("\n\n");
 
-        // LOAD AI KNOWLEDGE BASE (LEARNED PATTERNS)
+        // LOAD AI KNOWLEDGE BASE
         $knowledge = AiKnowledgeBase::where('is_active', true)->get();
         $knowledgeContext = "";
         if ($knowledge->isNotEmpty()) {
-            $knowledgeContext = "ATURAN KHUSUS (DARI PEMBELAJARAN SEBELUMNYA):\n";
+            $knowledgeContext = "ATURAN TAMBAHAN PERUSAHAAN:\n";
             $knowledgeContext .= $knowledge->map(function($k) {
                 return "- [{$k->topic}]: {$k->content}";
             })->join("\n");
@@ -269,97 +369,86 @@ class ChatbotController extends Controller
 
         $prompt = "
         PERAN:
-        Anda adalah CHCO (Chief Human Capital Officer) & Elite HR Auditor (Level Grandmaster).
-        Kecerdasan Anda setara dengan model AI berbayar termahal ($500/jam).
-        Tugas Anda: Membongkar kebenaran CV hingga ke akar-akarnya (Ruthless Truth-Seeking).
+        Anda adalah Auditor Senior HRD (Manusia, bukan Robot).
+        Tugas: Membaca CV pelamar dengan teliti seolah-olah Anda akan merekrut mereka untuk perusahaan Anda sendiri.
         
-        MINDSET 'LEVEL MAX':
-        1.  **HYPER-SKEPTICISM**: Asumsikan semua klaim di CV adalah 'Marketing Bullshit' sampai terbukti oleh Angka, Durasi, atau Jejak Digital.
-        2.  **STRATEGIC FORESIGHT**: Jangan hanya menilai masa lalu. Prediksi masa depan: 'Apakah orang ini akan resign dalam 6 bulan?', 'Apakah dia toxic?'.
-        3.  **MULTI-DIMENSIONAL SCORING**: Gabungkan IQ (Kompetensi), EQ (Psikometrik), dan AQ (Adversity Quotient/Daya Tahan).
-        4.  **MICRO-EXPRESSION ANALYSIS (TEXTUAL)**: Analisis pemilihan kata. Penggunaan kata pasif vs aktif, kata-kata 'weak' vs 'power words'.
+        INSTRUKSI UTAMA (STRICT & EVIDENCE-BASED):
+        0.  **DETERMINISTIC MODE (WAJIB KONSISTEN)**:
+            -   Untuk input CV yang sama, hasil analisis (Skor, Ringkasan, dan Rekomendasi) HARUS SELALU SAMA PERSIS 100%.
+            -   Jangan mengubah penilaian hanya karena mencoba variasi. Gunakan logika baku.
 
-        PROTOKOL ANALISIS MENDALAM (WAJIB IKUTI STEP-BY-STEP DI DALAM PIKIRAN):
+        1.  **PEMBUKTIAN WAJIB (NO HALLUCINATION)**:
+            - Setiap skor yang Anda berikan HARUS ada buktinya di teks CV.
+            - JIKA BUKTI TIDAK DITEMUKAN DI TEKS, BERIKAN SKOR 1 (SATU). JANGAN MENGARANG/ASUMSI.
+            - Kutip kalimat asli dari CV untuk kolom 'evidence'.
         
-        PHASE 1: FORENSIC TIMELINE AUDIT (MATEMATIKA KARIR)
-        -   Hitung bulan kerja real. 1 Tahun = 12 Bulan. Jika '2020-2021', hitung sebagai 12 bulan (estimasi tengah).
-        -   DETEKSI 'SILENT GAPS': Jika End Date pekerjaan A = Jan 2022, Start Date pekerjaan B = Sep 2022 -> Ada 8 bulan nganggur. TANYAKAN!
-        -   DETEKSI 'TITLE INFLATION': Fresh graduate (0-2 tahun) tapi title 'Senior Manager' atau 'Head of'? -> FLAGGED (Nilai Rendah).
+        2.  **HITUNGAN MATEMATIKA NYATA**:
+            - Pengalaman Kerja: Hitung manual (Tahun Selesai - Tahun Mulai) untuk setiap posisi.
+            - Jangan terkecoh dengan 'Senior' jika pengalaman total < 3 tahun.
+            - Hati-hati dengan overlap tanggal.
         
-        PHASE 2: COMPETENCY VALIDATION (TRIANGULATION)
-        -   Klaim: 'Expert Laravel'.
-        -   Bukti yang dicari: Pernah handle High Traffic? Microservices? Atau cuma CRUD sederhana?
-        -   Jika tidak ada detail proyek kompleks -> Turunkan ke 'Beginner/Intermediate'.
-        
-        PHASE 3: PSYCHO-LINGUISTIC PROFILING
-        -   Gaya Bahasa: Apakah narsistik ('Saya hebat', 'Saya terbaik') atau kolaboratif ('Kami', 'Tim')?
-        -   Struktur: Apakah CV berantakan? -> Indikasi Low Conscientiousness (Tidak teliti).
-        -   Konsistensi: Apakah deskripsi diri di awal cocok dengan pengalaman kerja?
+        3.  **PENILAIAN KRITERIA (SANGAT KETAT & LOGIKA MATEMATIKA)**:
+            -   **PENGALAMAN KERJA**:
+                *   Cari semua Riwayat Pekerjaan. Catat Tanggal Mulai & Selesai (Bulan/Tahun).
+                *   Jika hanya ada Tahun (misal: 2020-2021), asumsikan durasi MINIMAL (Jan 2020 - Jan 2021 = 1 tahun, BUKAN 2 tahun).
+                *   Total Durasi = Jumlahkan semua pengalaman (dikurangi overlap).
+                *   **JANGAN MEMBULATKAN KE ATAS**. 1 tahun 9 bulan itu BELUM 2 tahun.
+                *   Jika total pengalaman < 1 tahun, berikan skor terendah.
+            -   **PENDIDIKAN**:
+                *   Cek gelar tertinggi yang SUDAH LULUS (ada ijazah/tahun lulus).
+                *   Mahasiswa aktif (belum lulus) dihitung sebagai ijazah terakhir (SMA/SMK).
+            -   Baca 'DESKRIPSI SKALA PENILAIAN' di bawah untuk setiap kriteria.
+            -   Cocokkan data pelamar dengan skala tersebut secara literal.
+            -   Contoh: Jika kriteria bilang 'Nilai 5 = Min. 5 tahun', dan pelamar cuma 4.8 tahun, MAKA BERIKAN NILAI 4. JANGAN KASIH 5.
 
-        PHASE 4: STRATEGIC FIT & PREDICTION
-        -   Apakah skill set ini 'Future-Proof'? Atau skill usang?
-        -   Culture Fit: Apakah orang ini cocok dengan budaya high-performance?
+        4.  **BAHASA SEDERHANA (LAYMAN TERMS)**:
+            - Gunakan Bahasa Indonesia yang lugas, tidak kaku, dan mudah dimengerti orang awam.
+            - Hindari istilah teknis HR yang rumit.
 
         $knowledgeContext
 
-        TUGAS:
-        Analisis CV ini dengan standar INTERNASIONAL (Fortune 500).
-        Berikan output yang SANGAT DETAIL, KRITIS, dan TAJAM.
-        
-        OUTPUT SECTION:
-        1.  **Executive Summary**: Ringkasan 2 kalimat untuk CEO.
-        2.  **Red Flags (Peringatan Bahaya)**: Daftar hal mencurigakan/negatif.
-        3.  **Green Flags (Kekuatan Utama)**: Daftar hal positif yang valid.
-        4.  **Score Analysis per Kriteria**: (Jelaskan alasan nilai berdasarkan bukti di CV).
-        5.  **Interview Questions**: 3 Pertanyaan mematikan untuk membuktikan klaim pelamar.
-        6.  **FINAL VERDICT**: [HIRE / NO HIRE / INTERVIEW CAREFULLY] (Confidence Score: 0-100%).
-
-        DATA KRITERIA:
+        DATA KRITERIA DAN SKALA PENILAIAN (WAJIB DIIKUTI):
         $criteriaContext
         
-        ISI CV:
+        IDENTITAS PELAMAR:
+        Nama: {$pelamar->nama}
+
+        ISI TEXT CV PELAMAR:
         $text
         
         FORMAT OUTPUT JSON (HANYA JSON):
         {
-            \"summary\": \"[Executive Summary] Ringkasan level direksi. Langsung ke inti: Apakah ini 'Top Talent' atau 'Bad Hire'?\",
+            \"summary\": \"[Ringkasan] Jelaskan profil kandidat. WAJIB SEBUTKAN: 'Total Pengalaman Kerja: X Tahun Y Bulan' (Hasil hitungan manual).\",
             \"recommendation\": \"HIGHLY RECOMMENDED / CONSIDER / NOT RECOMMENDED\",
             \"match_confidence\": \"TINGGI / SEDANG / RENDAH\",
             \"red_flags\": [
-                 \"[CRITICAL] Gap 8 bulan tidak dijelaskan.\",
-                 \"[WARNING] Job Hopping: 4 perusahaan dalam 2 tahun.\",
-                 \"[LOGIC] Title 'Senior' tapi pengalaman total < 2 tahun.\"
+                 \"Total pengalaman kerja hanya 1 tahun (Kurang dari syarat 2 tahun).\",
+                 \"Ada jeda menganggur (gap) selama 8 bulan di tahun 2023.\",
+                 \"Tidak melampirkan portofolio yang diminta.\"
             ],
             \"psychometrics\": {
-                 \"leadership_potential\": \"High/Medium/Low\",
+                 \"leadership_potential\": \"Tinggi/Sedang/Rendah\",
                  \"culture_fit_score\": 1-100,
-                 \"work_style\": \"Autonomous / Team-Player / Micro-managed\",
-                 \"dominant_traits\": [\"Ambitious\", \"Analytical\", \"Resilient\"]
+                 \"work_style\": \"Mandiri / Butuh Arahan / Team-Player\",
+                 \"dominant_traits\": [\"Teliti\", \"Ambisius\", \"Kreatif\"]
             },
             \"interview_questions\": [
-                 \"[Untuk Menguji Gap] 'Saya melihat gap 8 bulan di 2021. Apa produktivitas konkret yang Anda hasilkan saat itu?'\",
-                 \"[Untuk Menguji Klaim Expert] 'Jelaskan tantangan teknis terberat di Project X dan bagaimana Anda menyelesaikannya secara spesifik.'\",
-                 \"[Untuk Menguji Loyalitas] 'Mengapa Anda pindah dari PT A hanya setelah 6 bulan?'\"
+                 \"Coba ceritakan apa saja yang Anda lakukan saat menganggur di tahun 2023?\",
+                 \"Di CV tertulis Anda menguasai X, bisa berikan contoh proyek nyata yang menggunakan X?\"
             ],
             \"competency_gap\": [
-                 \"Kurang pengalaman di Cloud Architecture (AWS/Azure) yang krusial untuk level Senior.\",
-                 \"Belum memiliki sertifikasi PMP padahal melamar Project Manager.\"
+                 \"Belum menguasai skill X.\",
+                 \"Bahasa Inggris masih level pasif.\"
             ],
             \"details\": {
-                \"KODE_KRITERIA_1\": { 
-                    \"score\": NILAI_ANGKA_1_SD_5, 
-                    \"reason\": \"[Analisis Tajam] Berikan alasan yang tidak bisa dibantah. Kaitkan fakta CV dengan skor.\" 
+                \"KODE_KRITERIA_SESUAI_DATABASE\": { 
+                    \"score\": ANGKA_1_SD_5, 
+                    \"reason\": \"[Analisis] Tuliskan cara perhitungan di sini. Contoh: '2019-2020 (1th) + 2022 (6bln) = 1.5 tahun'.\",
+                    \"evidence\": \"[Bukti] Kutipan langsung dari CV: 'Bekerja sebagai Manager (2018-2022)'\"
                 },
-                ...
+                ... (Ulangi untuk SEMUA kriteria yang ada di DATA KRITERIA)
             }
         }
-        
-        ATURAN SKORING (TIDAK BOLEH ADA KASIHAN):
-        - Skor 5: Unicorn Talent (Top 1%).
-        - Skor 4: Solid Professional (Top 20%).
-        - Skor 3: Average (Memenuhi syarat, tidak istimewa).
-        - Skor 2: Below Average (Banyak kekurangan).
-        - Skor 1: Unqualified / Fraud.
         ";
 
         // 4. Kirim ke Groq
@@ -369,12 +458,13 @@ class ChatbotController extends Controller
                 'Authorization' => 'Bearer ' . $apiKey, 
                 'Content-Type'  => 'application/json',
             ])->post('https://api.groq.com/openai/v1/chat/completions', [
-                'model' => 'llama-3.3-70b-versatile',
+                'model' => 'llama-3.3-70b-versatile', // Ganti ke Llama 3.3 (Model Aktif)
                 'messages' => [
-                    ['role' => 'system', 'content' => 'You are a JSON generator. Always return valid JSON.'],
+                    ['role' => 'system', 'content' => 'You are a JSON generator. Always return valid JSON. Be deterministic.'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
-                'temperature' => 0.1, // Rendah agar konsisten/deterministik
+                'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
+                // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON
             ]);
 
@@ -386,7 +476,7 @@ class ChatbotController extends Controller
                     'data' => json_decode($result)
                 ]);
             } else {
-                return response()->json(['success' => false, 'message' => 'Gagal koneksi ke AI.']);
+                return response()->json(['success' => false, 'message' => 'Gagal koneksi ke AI: ' . $response->body()]);
             }
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);

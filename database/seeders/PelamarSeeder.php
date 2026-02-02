@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Pelamar;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class PelamarSeeder extends Seeder
 {
@@ -13,37 +14,27 @@ class PelamarSeeder extends Seeder
     {
         // PERBAIKAN: Mengisi 'nilai_kriteria' (JSON) agar ranking langsung muncul
         
-        \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         Pelamar::truncate();
         User::where('email', 'like', '%@dummy.com')->delete();
-        \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $data_dummy = [
             [
-                'nama' => 'Andi Pratama',
-                'status' => 'Lulus',
-                // Nilai JSON (Key harus sesuai Kode Kriteria C1, C2...)
-                'nilai' => ['C1' => 4, 'C2' => 4, 'C3' => 4, 'C4' => 4] 
-            ],
-            [
                 'nama' => 'Budi Santoso',
-                'status' => 'Ditolak',
-                'nilai' => ['C1' => 3, 'C2' => 1, 'C3' => 1, 'C4' => 4]
+                'status' => 'Pending',
+                // C1=Pengalaman(Thn), C2=Pendidikan(Skor), C3=Skill(Skor), C4=Gaji(Jt), C5=Jarak(KM)
+                'nilai' => ['C1' => 5, 'C2' => 4, 'C3' => 80, 'C4' => 8, 'C5' => 10]
             ],
             [
-                'nama' => 'Citra Lestari',
+                'nama' => 'Siti Aminah',
                 'status' => 'Pending',
-                'nilai' => ['C1' => 4, 'C2' => 2, 'C3' => 2, 'C4' => 3]
+                'nilai' => ['C1' => 2, 'C2' => 3, 'C3' => 70, 'C4' => 5, 'C5' => 5]
             ],
             [
-                'nama' => 'Dewi Anggraini',
+                'nama' => 'Andi Pratama',
                 'status' => 'Pending',
-                'nilai' => ['C1' => 4, 'C2' => 3, 'C3' => 3, 'C4' => 2]
-            ],
-            [
-                'nama' => 'Eko Kurniawan',
-                'status' => 'Pending',
-                'nilai' => ['C1' => 3, 'C2' => 4, 'C3' => 4, 'C4' => 4]
+                'nilai' => ['C1' => 8, 'C2' => 4, 'C3' => 90, 'C4' => 10, 'C5' => 20]
             ],
         ];
 

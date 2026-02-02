@@ -81,6 +81,103 @@ class SpkController extends Controller
         }
     }
 
+    // --- DETAIL PERHITUNGAN SAW ---
+    public function detailPerhitungan()
+    {
+        $pelamars = Pelamar::all();
+        $kriterias = Kriteria::all();
+
+        // 1. Matriks Keputusan (X)
+        $matriksX = [];
+        foreach ($pelamars as $p) {
+            $row = ['nama' => $p->nama];
+            foreach($kriterias as $k) {
+                $val = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $row[$k->kode] = $val;
+            }
+            $matriksX[] = $row;
+        }
+
+        // 2. Normalisasi Matriks (R)
+        $matriksR = [];
+        $dataNilai = [];
+        // Extract values for min/max calculation
+        foreach ($pelamars as $p) {
+            foreach($kriterias as $k) {
+                $val = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $dataNilai[$k->kode][] = $val;
+            }
+        }
+        // Calculate Min/Max
+        $minMax = [];
+        foreach($kriterias as $k) {
+            if(!empty($dataNilai[$k->kode])) {
+                if($k->jenis == 'cost') {
+                    $min = min($dataNilai[$k->kode]);
+                    $minMax[$k->kode] = $min == 0 ? 1 : $min;
+                } else {
+                    $max = max($dataNilai[$k->kode]);
+                    $minMax[$k->kode] = $max == 0 ? 1 : $max;
+                }
+            } else {
+                $minMax[$k->kode] = 1;
+            }
+        }
+        // Build R
+        foreach ($pelamars as $p) {
+            $row = ['nama' => $p->nama];
+            foreach($kriterias as $k) {
+                $nilai = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $norm = ($k->jenis == 'cost') ? ($nilai != 0 ? $minMax[$k->kode] / $nilai : 0) : ($nilai / $minMax[$k->kode]);
+                $row[$k->kode] = number_format($norm, 3);
+            }
+            $matriksR[] = $row;
+        }
+
+        // 3. Matriks Terbobot (V) & Skor Akhir
+        $matriksV = [];
+        $ranking = [];
+        foreach ($pelamars as $p) {
+            $row = ['nama' => $p->nama];
+            $skor = 0;
+            foreach($kriterias as $k) {
+                $nilai = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $norm = ($k->jenis == 'cost') ? ($nilai != 0 ? $minMax[$k->kode] / $nilai : 0) : ($nilai / $minMax[$k->kode]);
+                $weighted = $norm * $k->bobot;
+                $row[$k->kode] = number_format($weighted, 3);
+                $skor += $weighted;
+            }
+            $row['skor_akhir'] = number_format($skor, 3);
+            $matriksV[] = $row;
+            
+            // Add to ranking array
+            $p->skor_kalkulasi = $skor; // Temporary attribute
+            $ranking[] = $p;
+        }
+
+        // Sort ranking
+        usort($ranking, function($a, $b) {
+            return $b->skor_kalkulasi <=> $a->skor_kalkulasi;
+        });
+
+        // Convert ranking to array for View & JSON consistency
+        $rankingArray = [];
+        foreach($ranking as $r) {
+            $rankingArray[] = [
+                'nama' => $r->nama,
+                'skor_kalkulasi' => number_format($r->skor_kalkulasi, 3)
+            ];
+        }
+
+        return view('detail_perhitungan', [
+            'kriterias' => $kriterias,
+            'matriksX' => $matriksX,
+            'matriksR' => $matriksR,
+            'matriksV' => $matriksV,
+            'ranking' => $rankingArray
+        ]);
+    }
+
     public function prosesHitungRanking()
     {
         $pelamars = Pelamar::all();
