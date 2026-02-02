@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Pelamar;
+use App\Models\Supplier; // Renamed from Pelamar
 use App\Models\User;
 use App\Models\Kriteria;
-use App\Models\ActivityLog; // Load Model Log
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
@@ -27,25 +27,26 @@ class SpkController extends Controller
     {
         $user = Auth::user();
 
+        // Admin: Full Access
         if ($user->role == 'admin') {
             $users = User::all();
-            $pelamars = Pelamar::all();
-            // Ambil 20 Log Aktivitas Terakhir untuk Admin
+            $suppliers = Supplier::all();
             $logs = ActivityLog::with('user')->latest()->paginate(20);
             
-            return view('dashboard_admin', compact('users', 'pelamars', 'logs'));
+            return view('dashboard_admin', compact('users', 'suppliers', 'logs'));
 
+        // Manager (formerly HRD): View Rankings & Analytics
         } elseif ($user->role == 'hrd') {
-            $pelamars = Pelamar::all();
+            $suppliers = Supplier::all();
             $kriterias = Kriteria::all();
-            $ranking = Pelamar::orderByDesc('skor_akhir')->get();
+            $ranking = Supplier::orderByDesc('skor_akhir')->get();
 
             // --- HITUNG MATRIKS NORMALISASI (Display) ---
             $matriks = [];
             $dataNilai = [];
-            foreach ($pelamars as $p) {
+            foreach ($suppliers as $s) {
                 foreach($kriterias as $k) {
-                    $val = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                    $val = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                     $dataNilai[$k->kode][] = $val;
                 }
             }
@@ -63,36 +64,38 @@ class SpkController extends Controller
                     $minMax[$k->kode] = 1;
                 }
             }
-            foreach ($pelamars as $p) {
-                $baris = ['nama' => $p->nama];
+            foreach ($suppliers as $s) {
+                $baris = ['nama' => $s->nama];
                 foreach($kriterias as $k) {
-                    $nilai = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                    $nilai = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                     $norm = ($k->jenis == 'cost') ? ($nilai != 0 ? $minMax[$k->kode] / $nilai : 0) : ($nilai / $minMax[$k->kode]);
                     $baris[$k->kode] = number_format($norm, 3);
                 }
                 $matriks[] = $baris;
             }
 
-            return view('dashboard_hrd', compact('pelamars', 'ranking', 'kriterias', 'matriks'));
+            return view('dashboard_manager', compact('suppliers', 'ranking', 'kriterias', 'matriks'));
 
+        // Staff (formerly Pelamar): Input Data & Negotiation
         } else {
-            $pelamar = Pelamar::where('user_id', $user->id)->first();
-            return view('dashboard_pelamar', compact('pelamar'));
+            // Staff sees ALL suppliers to manage them
+            $suppliers = Supplier::all(); 
+            return view('dashboard_staff', compact('suppliers'));
         }
     }
 
     // --- DETAIL PERHITUNGAN SAW ---
     public function detailPerhitungan()
     {
-        $pelamars = Pelamar::all();
+        $suppliers = Supplier::all();
         $kriterias = Kriteria::all();
 
         // 1. Matriks Keputusan (X)
         $matriksX = [];
-        foreach ($pelamars as $p) {
-            $row = ['nama' => $p->nama];
+        foreach ($suppliers as $s) {
+            $row = ['nama' => $s->nama];
             foreach($kriterias as $k) {
-                $val = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $val = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                 $row[$k->kode] = $val;
             }
             $matriksX[] = $row;
@@ -101,14 +104,12 @@ class SpkController extends Controller
         // 2. Normalisasi Matriks (R)
         $matriksR = [];
         $dataNilai = [];
-        // Extract values for min/max calculation
-        foreach ($pelamars as $p) {
+        foreach ($suppliers as $s) {
             foreach($kriterias as $k) {
-                $val = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $val = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                 $dataNilai[$k->kode][] = $val;
             }
         }
-        // Calculate Min/Max
         $minMax = [];
         foreach($kriterias as $k) {
             if(!empty($dataNilai[$k->kode])) {
@@ -123,11 +124,10 @@ class SpkController extends Controller
                 $minMax[$k->kode] = 1;
             }
         }
-        // Build R
-        foreach ($pelamars as $p) {
-            $row = ['nama' => $p->nama];
+        foreach ($suppliers as $s) {
+            $row = ['nama' => $s->nama];
             foreach($kriterias as $k) {
-                $nilai = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $nilai = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                 $norm = ($k->jenis == 'cost') ? ($nilai != 0 ? $minMax[$k->kode] / $nilai : 0) : ($nilai / $minMax[$k->kode]);
                 $row[$k->kode] = number_format($norm, 3);
             }
@@ -137,11 +137,11 @@ class SpkController extends Controller
         // 3. Matriks Terbobot (V) & Skor Akhir
         $matriksV = [];
         $ranking = [];
-        foreach ($pelamars as $p) {
-            $row = ['nama' => $p->nama];
+        foreach ($suppliers as $s) {
+            $row = ['nama' => $s->nama];
             $skor = 0;
             foreach($kriterias as $k) {
-                $nilai = isset($p->nilai_kriteria[$k->kode]) ? (float)$p->nilai_kriteria[$k->kode] : 0;
+                $nilai = isset($s->nilai_kriteria[$k->kode]) ? (float)$s->nilai_kriteria[$k->kode] : 0;
                 $norm = ($k->jenis == 'cost') ? ($nilai != 0 ? $minMax[$k->kode] / $nilai : 0) : ($nilai / $minMax[$k->kode]);
                 $weighted = $norm * $k->bobot;
                 $row[$k->kode] = number_format($weighted, 3);
@@ -150,17 +150,14 @@ class SpkController extends Controller
             $row['skor_akhir'] = number_format($skor, 3);
             $matriksV[] = $row;
             
-            // Add to ranking array
-            $p->skor_kalkulasi = $skor; // Temporary attribute
-            $ranking[] = $p;
+            $s->skor_kalkulasi = $skor; 
+            $ranking[] = $s;
         }
 
-        // Sort ranking
         usort($ranking, function($a, $b) {
             return $b->skor_kalkulasi <=> $a->skor_kalkulasi;
         });
 
-        // Convert ranking to array for View & JSON consistency
         $rankingArray = [];
         foreach($ranking as $r) {
             $rankingArray[] = [
@@ -180,16 +177,16 @@ class SpkController extends Controller
 
     public function prosesHitungRanking()
     {
-        $pelamars = Pelamar::all();
-        if ($pelamars->isEmpty()) return back()->with('error', __('No applicant data found.'));
+        $suppliers = Supplier::all();
+        if ($suppliers->isEmpty()) return back()->with('error', __('No supplier data found.'));
         $kriterias = Kriteria::all();
         if ($kriterias->isEmpty()) return back()->with('error', __('Criteria not set.'));
 
         $dataNilai = [];
-        foreach ($pelamars as $p) {
-            $row = ['id' => $p->id];
+        foreach ($suppliers as $s) {
+            $row = ['id' => $s->id];
             foreach($kriterias as $k) {
-                $val = isset($p->nilai_kriteria[$k->kode]) ? $p->nilai_kriteria[$k->kode] : 0;
+                $val = isset($s->nilai_kriteria[$k->kode]) ? $s->nilai_kriteria[$k->kode] : 0;
                 $row[$k->kode] = (float) $val;
             }
             $dataNilai[] = $row;
@@ -210,71 +207,54 @@ class SpkController extends Controller
                 $norm = ($k->jenis == 'cost') ? ($nilaiReal != 0 ? $minMax[$k->kode] / $nilaiReal : 0) : ($nilaiReal / $minMax[$k->kode]);
                 $skor += $norm * ($k->bobot); 
             }
-            Pelamar::where('id', $d['id'])->update(['skor_akhir' => $skor]);
+            Supplier::where('id', $d['id'])->update(['skor_akhir' => $skor]);
         }
         
-        // LOG AKTIVITAS
-        $this->logActivity(Auth::user()->name . ' melakukan perhitungan ulang ranking SAW.', 'info');
+        $this->logActivity(Auth::user()->name . ' recalculated SAW ranking.', 'info');
 
         return back()->with('success', __('SAW ranking calculation completed! Scores updated.'));
     }
 
-    // --- FUNGSI UPDATE NILAI (DENGAN LOG) ---
     public function updateNilai(Request $request, $id)
     {
-        $pelamar = Pelamar::findOrFail($id);
+        $supplier = Supplier::findOrFail($id);
         $inputNilai = $request->except(['_token', '_method']);
         $cleanNilai = array_map(function($val) { return is_numeric($val) ? (float)$val : 0; }, $inputNilai);
         
-        $pelamar->update(['nilai_kriteria' => $cleanNilai]);
+        $supplier->update(['nilai_kriteria' => $cleanNilai]);
 
-        // LOG AKTIVITAS
-        $this->logActivity(Auth::user()->name . " mengubah nilai penilaian untuk kandidat: {$pelamar->nama}.", 'warning');
+        $this->logActivity(Auth::user()->name . " updated score for supplier: {$supplier->nama}.", 'warning');
 
         return redirect()->back()->with('success', __('Score data updated.'));
     }
 
-    // --- FUNGSI UPDATE STATUS (DENGAN LOG) ---
     public function updateStatus(Request $request, $id)
     {
-        $pelamar = Pelamar::findOrFail($id);
-        $oldStatus = $pelamar->status_lamaran;
-        $pelamar->update(['status_lamaran' => $request->status]);
+        $supplier = Supplier::findOrFail($id);
+        $oldStatus = $supplier->status_supplier;
+        $supplier->update(['status_supplier' => $request->status]);
 
-        // LOG AKTIVITAS
         if($oldStatus != $request->status) {
-            $this->logActivity(Auth::user()->name . " mengubah status {$pelamar->nama} dari {$oldStatus} menjadi {$request->status}.", 'warning');
+            $this->logActivity(Auth::user()->name . " changed status of {$supplier->nama} from {$oldStatus} to {$request->status}.", 'warning');
         }
 
-        return redirect()->back()->with('success', __('Applicant status updated.'));
+        return redirect()->back()->with('success', __('Supplier status updated.'));
     }
 
-    // --- FUNGSI DELETE USER (DENGAN LOG) ---
     public function deleteUser($id)
     { 
         $user = User::findOrFail($id); 
-        $userName = $user->name;
-        $userRole = $user->role;
-
-        if($user->role == 'pelamar') {
-            $pelamar = $user->pelamar;
-            if ($pelamar) {
-                if ($pelamar->file_berkas && Storage::disk('public')->exists($pelamar->file_berkas)) {
-                    Storage::disk('public')->delete($pelamar->file_berkas);
-                }
-                $pelamar->delete();
-            }
-        }
+        // Logic change: Deleting a User (Staff) should NOT delete Suppliers automatically, 
+        // unless they are strictly bound. For now, we keep suppliers safe.
         $user->delete(); 
         
-        // LOG AKTIVITAS
-        $this->logActivity(Auth::user()->name . " menghapus user: {$userName} (Role: {$userRole}).", 'danger');
+        $this->logActivity(Auth::user()->name . " deleted user: {$user->name}.", 'danger');
 
-        return back()->with('success', __('User and application files permanently deleted.')); 
+        return back()->with('success', __('User deleted.')); 
     }
 
     public function cetakLaporan(Request $request) {
-        $ranking = Pelamar::orderByDesc('skor_akhir')->get();
+        $ranking = Supplier::orderByDesc('skor_akhir')->get();
         if ($request->has('filter_type') && $request->filter_type == 'selected') {
             $selectedIds = $request->input('selected_ids', []);
             $ranking = $ranking->whereIn('id', $selectedIds);
@@ -283,30 +263,28 @@ class SpkController extends Controller
     }
 
     public function downloadLaporan(Request $request) {
-        // ... (Kode download sama seperti sebelumnya, disingkat agar muat)
-        $ranking = Pelamar::orderByDesc('skor_akhir')->get();
+        $ranking = Supplier::orderByDesc('skor_akhir')->get();
         if ($request->has('filter_type') && $request->filter_type == 'selected') {
             $selectedIds = $request->input('selected_ids', []);
             $ranking = $ranking->whereIn('id', $selectedIds);
         }
         $type = $request->input('format', 'csv');
-        $filename = "Laporan_Seleksi_" . date('Y-m-d') . "." . ($type == 'excel' ? 'xls' : 'csv');
+        $filename = "Supplier_Report_" . date('Y-m-d') . "." . ($type == 'excel' ? 'xls' : 'csv');
         
-        $this->logActivity(Auth::user()->name . " mengunduh laporan seleksi ({$type}).", 'info'); // LOG
+        $this->logActivity(Auth::user()->name . " downloaded report ({$type}).", 'info');
 
         if ($type == 'excel') {
             header('Content-Type: application/vnd.ms-excel'); header('Content-Disposition: attachment; filename="' . $filename . '"');
-            echo '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Sheet1"><Table><Row><Cell><Data ss:Type="String">Rank</Data></Cell><Cell><Data ss:Type="String">Nama</Data></Cell><Cell><Data ss:Type="String">Skor</Data></Cell></Row>';
+            echo '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Sheet1"><Table><Row><Cell><Data ss:Type="String">Rank</Data></Cell><Cell><Data ss:Type="String">Supplier Name</Data></Cell><Cell><Data ss:Type="String">Score</Data></Cell></Row>';
             $no=1; foreach($ranking as $r){ echo "<Row><Cell><Data ss:Type='Number'>".$no++."</Data></Cell><Cell><Data ss:Type='String'>".$r->nama."</Data></Cell><Cell><Data ss:Type='Number'>".$r->skor_akhir."</Data></Cell></Row>"; }
             echo '</Table></Worksheet></Workbook>'; exit;
         } else {
             header('Content-Type: text/csv'); header('Content-Disposition: attachment; filename="' . $filename . '"');
-            $fp = fopen('php://output', 'w'); fputcsv($fp, ['Rank', 'Nama', 'Skor', 'Status']);
-            $no=1; foreach($ranking as $r){ fputcsv($fp, [$no++, $r->nama, number_format($r->skor_akhir,4), $r->status_lamaran]); } fclose($fp); exit;
+            $fp = fopen('php://output', 'w'); fputcsv($fp, ['Rank', 'Supplier Name', 'Score', 'Status']);
+            $no=1; foreach($ranking as $r){ fputcsv($fp, [$no++, $r->nama, number_format($r->skor_akhir,4), $r->status_supplier]); } fclose($fp); exit;
         }
     }
 
-    // --- FUNGSI UPDATE KRITERIA (DENGAN LOG) ---
     public function updateKriteria(Request $request) {
         $data = $request->input('kriteria');
         $totalBobot = 0; foreach ($data as $item) $totalBobot += (float) $item['bobot'];
@@ -320,63 +298,95 @@ class SpkController extends Controller
             Kriteria::create(['kode'=>$item['kode'], 'nama'=>$item['nama'], 'bobot'=>$item['bobot']/100, 'jenis'=>$item['jenis']??'benefit', 'opsi'=>$opsi]);
         }
 
-        // LOG AKTIVITAS
-        $this->logActivity(Auth::user()->name . " memperbarui konfigurasi kriteria dan bobot.", 'warning');
+        $this->logActivity(Auth::user()->name . " updated criteria configuration.", 'warning');
 
         return redirect()->back()->with('success', __('Criteria configuration updated.'));
     }
 
-    public function storeLamaran(Request $request) {
+    // --- NEW: STAFF STORE SUPPLIER (Replaces storeLamaran) ---
+    public function storeSupplier(Request $request) {
         try {
-            $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'required|mimes:pdf|max:5120']);
-            $path = $request->file('file_berkas')->store('berkas_lamaran', 'public');
-            Pelamar::create(['user_id' => Auth::id(), 'nama' => $request->nama, 'file_berkas' => $path, 'status_lamaran' => 'Pending', 'nilai_kriteria' => [], 'skor_akhir' => 0]);
+            $request->validate([
+                'nama' => 'required|string|max:255',
+                'file_berkas' => 'nullable|mimes:pdf|max:5120',
+                'email' => 'nullable|email',
+                'telepon' => 'nullable|string',
+                'nama_barang' => 'nullable|string',
+                'harga' => 'nullable|numeric',
+                'tempo_pembayaran' => 'nullable|string',
+                'estimasi_pengiriman' => 'nullable|string',
+                'catatan_negosiasi' => 'nullable|string'
+            ]);
             
-            $this->logActivity("Pelamar " . $request->nama . " mengirim berkas lamaran baru.", 'info'); // LOG
+            $path = null;
+            if ($request->hasFile('file_berkas')) {
+                $path = $request->file('file_berkas')->store('berkas_supplier', 'public');
+            }
+
+            Supplier::create([
+                'user_id' => Auth::id(), // Recorded as 'Created By'
+                'nama' => $request->nama,
+                'email' => $request->email,
+                'telepon' => $request->telepon,
+                'nama_barang' => $request->nama_barang,
+                'harga' => $request->harga ?? 0,
+                'tempo_pembayaran' => $request->tempo_pembayaran,
+                'estimasi_pengiriman' => $request->estimasi_pengiriman,
+                'catatan_negosiasi' => $request->catatan_negosiasi,
+                'file_berkas' => $path,
+                'status_supplier' => 'Pending',
+                'nilai_kriteria' => [],
+                'skor_akhir' => 0
+            ]);
+            
+            $this->logActivity(Auth::user()->name . " added new supplier: " . $request->nama, 'info');
     
-            return redirect()->back()->with('success', __('Application submitted successfully.'));
+            return redirect()->back()->with('success', __('Supplier added successfully.'));
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', __('Failed to submit application: ') . $e->getMessage());
+            return redirect()->back()->with('error', __('Failed to add supplier: ') . $e->getMessage());
         }
     }
 
-    public function updateLamaran(Request $request) {
-        $pelamar = Pelamar::where('user_id', Auth::id())->firstOrFail();
+    // --- NEW: STAFF UPDATE SUPPLIER (Replaces updateLamaran) ---
+    public function updateSupplier(Request $request, $id) {
+        $supplier = Supplier::findOrFail($id);
         
-        if ($pelamar->status_lamaran !== 'Pending') {
-             return redirect()->back()->with('error', __('Application cannot be modified as it has already been processed.'));
-        }
+        $request->validate([
+            'nama' => 'required|string|max:255',
+            'file_berkas' => 'nullable|mimes:pdf|max:5120',
+            'email' => 'nullable|email',
+            'telepon' => 'nullable|string',
+            'nama_barang' => 'nullable|string',
+            'harga' => 'nullable|numeric',
+            'tempo_pembayaran' => 'nullable|string',
+            'estimasi_pengiriman' => 'nullable|string',
+            'catatan_negosiasi' => 'nullable|string'
+        ]);
 
-        $request->validate(['nama' => 'required|string|max:255','file_berkas' => 'nullable|mimes:pdf|max:5120']);
-
-        $data = ['nama' => $request->nama];
+        $data = [
+            'nama' => $request->nama,
+            'email' => $request->email,
+            'telepon' => $request->telepon,
+            'nama_barang' => $request->nama_barang,
+            'harga' => $request->harga,
+            'tempo_pembayaran' => $request->tempo_pembayaran,
+            'estimasi_pengiriman' => $request->estimasi_pengiriman,
+            'catatan_negosiasi' => $request->catatan_negosiasi
+        ];
 
         if ($request->hasFile('file_berkas')) {
-            if ($pelamar->file_berkas && Storage::disk('public')->exists($pelamar->file_berkas)) {
-                Storage::disk('public')->delete($pelamar->file_berkas);
+            if ($supplier->file_berkas && Storage::disk('public')->exists($supplier->file_berkas)) {
+                Storage::disk('public')->delete($supplier->file_berkas);
             }
-            $path = $request->file('file_berkas')->store('berkas_lamaran', 'public');
+            $path = $request->file('file_berkas')->store('berkas_supplier', 'public');
             $data['file_berkas'] = $path;
         }
 
-        $pelamar->update($data);
+        $supplier->update($data);
         
-        $this->logActivity("Pelamar " . $request->nama . " memperbarui berkas lamaran.", 'info');
+        $this->logActivity(Auth::user()->name . " updated supplier: " . $request->nama, 'info');
 
-        return redirect()->back()->with('success', __('Application updated successfully.'));
-    }
-
-    public function storeUser(Request $request){ 
-        User::create(['name'=>$request->name,'email'=>$request->email,'password'=>Hash::make($request->password),'role'=>$request->role]); 
-        $this->logActivity(Auth::user()->name . " menambahkan user baru: {$request->name} ({$request->role}).", 'info'); // LOG
-        return back()->with('success', __('User added.')); 
-    }
-    
-    public function updateUser(Request $request, $id){ 
-        $u = User::findOrFail($id);
-        $u->update(['name'=>$request->name,'email'=>$request->email,'role'=>$request->role]); 
-        $this->logActivity(Auth::user()->name . " mengupdate data user: {$request->name}.", 'info'); // LOG
-        return back()->with('success', __('User updated.')); 
+        return redirect()->back()->with('success', __('Supplier updated successfully.'));
     }
 
     public function viewPdf($path){ 

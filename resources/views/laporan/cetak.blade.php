@@ -29,8 +29,8 @@
         </div>
     </div>
 
-    <div class="title">HASIL KEPUTUSAN SELEKSI KARYAWAN</div>
-    <div style="text-align:center; margin-bottom:30px;">Nomor: {{ date('Y') }}/REC-HRD/{{ rand(1000,9999) }}</div>
+    <div class="title">HASIL KEPUTUSAN SELEKSI SUPPLIER</div>
+    <div style="text-align:center; margin-bottom:30px;">Nomor: {{ date('Y') }}/PROC-PURCH/{{ rand(1000,9999) }}</div>
 
     <p>Berdasarkan hasil verifikasi berkas dan perhitungan nilai metode <strong>SAW</strong>, berikut adalah hasilnya:</p>
 
@@ -38,7 +38,7 @@
         <thead>
             <tr>
                 <th width="8%">No</th>
-                <th width="40%">Nama Kandidat</th>
+                <th width="40%">Nama Supplier</th>
                 <th width="20%">Skor Akhir</th>
                 <th width="32%">Status</th>
             </tr>
@@ -50,8 +50,8 @@
                 <td class="nama"><strong>{{ $row->nama }}</strong></td>
                 <td>{{ number_format($row->skor_akhir, 4) }}</td>
                 <td>
-                    @if($row->status_lamaran == 'Lulus') <span class="badge">DITERIMA</span>
-                    @elseif($row->status_lamaran == 'Gagal') GUGUR
+                    @if($row->status_supplier == 'Lulus') <span class="badge">DITERIMA</span>
+                    @elseif($row->status_supplier == 'Gagal') GUGUR
                     @else PENDING @endif
                 </td>
             </tr>
@@ -63,7 +63,7 @@
 
     <div class="footer">
         <p>Jakarta, {{ date('d F Y') }}</p>
-        <p>Mengetahui,<br><strong>HRD Manager</strong></p>
+        <p>Mengetahui,<br><strong>Purchasing Manager</strong></p>
         <br><br><br>
         <p><u>( ......................................... )</u></p>
     </div>

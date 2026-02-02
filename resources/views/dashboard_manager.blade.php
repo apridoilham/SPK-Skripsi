@@ -37,7 +37,7 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                     </div>
                     <div>
-                        <h1 class="font-bold text-white text-xl leading-none tracking-tight">HRD Console</h1>
+                        <h1 class="font-bold text-white text-xl leading-none tracking-tight">Purchasing Console</h1>
                         <span class="text-xs text-gray-400 font-medium mt-1 block">
                             {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
                         </span>
@@ -62,6 +62,74 @@
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             
+            <!-- AI Decision Explainer Section -->
+            <div class="bg-gradient-to-br from-[#232f3e] to-[#1a232e] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden border border-gray-700" 
+                 x-data="{ 
+                    explaining: false, 
+                    explanation: '', 
+                    rankingData: @json($ranking),
+                    explainDecision() { 
+                        if (this.rankingData.length === 0) {
+                            Swal.fire('Error', 'No ranking data available to explain.', 'error');
+                            return;
+                        }
+                        this.explaining = true; 
+                        this.explanation = '';
+                        fetch('{{ route('chat.explain.decision') }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            body: JSON.stringify({ ranking_data: this.rankingData })
+                        })
+                        .then(res => res.json())
+                        .then(data => { 
+                            if(data.error) throw new Error(data.error);
+                            this.explanation = data.reply; 
+                            this.explaining = false; 
+                        })
+                        .catch(err => { 
+                            console.error(err); 
+                            Swal.fire('AI Error', 'Failed to generate explanation. ' + err.message, 'error');
+                            this.explaining = false; 
+                        });
+                    }
+                 }">
+                
+                <!-- Background Decoration -->
+                <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                <div class="absolute -bottom-32 -left-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+                <div class="relative z-10">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                        <div class="max-w-2xl">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-2 bg-indigo-500/20 rounded-lg backdrop-blur-sm border border-indigo-400/30">
+                                    <svg class="w-6 h-6 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <h2 class="text-2xl font-bold tracking-tight text-white">AI Decision Explainer</h2>
+                            </div>
+                            <p class="text-indigo-200 text-sm leading-relaxed mb-6">
+                                {{ __('Get a professional business justification for the current supplier ranking. The AI analyzes scores, criteria weights, and trade-offs to explain why the top supplier won.') }}
+                            </p>
+                            
+                            <button @click="explainDecision()" :disabled="explaining" class="px-6 py-3 bg-white text-[#232f3e] font-bold rounded-xl shadow-lg hover:bg-gray-50 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed">
+                                <svg x-show="!explaining" class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                <svg x-show="explaining" class="animate-spin w-5 h-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span x-text="explaining ? 'Analyzing Ranking...' : 'Generate Executive Summary'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Result Display -->
+                        <div x-show="explanation" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="flex-1 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10 md:min-w-[400px]">
+                            <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                                AI Analysis Result
+                            </h3>
+                            <div class="prose prose-invert prose-sm max-w-none text-gray-200" x-html="marked.parse(explanation)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Kriteria Cards -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 @foreach($kriterias as $k)
@@ -90,13 +158,13 @@
                     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                         <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center backdrop-blur-sm">
                             <div>
-                                <h2 class="font-bold text-slate-800 text-base">{{ __('Candidate Assessment Input') }}</h2>
+                                <h2 class="font-bold text-slate-800 text-base">{{ __('Supplier Assessment Input') }}</h2>
                                 <p class="text-xs text-slate-500 mt-0.5">{{ __('Rate according to uploaded documents.') }}</p>
                             </div>
-                            <span class="text-xs bg-white border border-slate-200 px-3 py-1.5 rounded-lg font-bold text-slate-600 shadow-sm">{{ count($pelamars) }} {{ __('Applicants') }}</span>
+                            <span class="text-xs bg-white border border-slate-200 px-3 py-1.5 rounded-lg font-bold text-slate-600 shadow-sm">{{ count($suppliers) }} {{ __('Suppliers') }}</span>
                         </div>
                         <div class="divide-y divide-slate-100">
-                            @forelse($pelamars as $p)
+                            @forelse($suppliers as $p)
                             <div class="p-6 hover:bg-slate-50 transition-colors group relative" x-data="{ sending: false }">
                                 <div class="flex justify-between items-start mb-6">
                                     <div class="flex gap-4">
@@ -108,14 +176,10 @@
                                         <div>
                                             <div class="flex items-center gap-2">
                                                 <h3 class="font-bold text-slate-900 text-base">{{ $p->nama }}</h3>
-                                                <button type="button" @click="analyzeCv({{ $p->id }})" class="text-[10px] bg-slate-100 text-[#232f3e] px-2 py-1 rounded-full border border-slate-200 hover:bg-slate-200 transition-colors flex items-center gap-1.5 font-bold" title="{{ __('Automatic Analysis with AI') }}">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                                                    {{ __('AI Scan') }}
-                                                </button>
                                             </div>
                                             <a href="#" @click.prevent="viewPdf('{{ route('view.pdf', $p->file_berkas) }}')" class="text-xs font-semibold text-[#232f3e] hover:text-[#232f3e] flex items-center gap-1.5 mt-1 group/link transition-colors">
                                                 <svg class="w-3.5 h-3.5 text-[#232f3e] group-hover/link:text-[#1a232e]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg> 
-                                                <span class="group-hover/link:underline decoration-[#232f3e] underline-offset-2">{{ __('View PDF Document') }}</span>
+                                                <span class="group-hover/link:underline decoration-[#232f3e] underline-offset-2">{{ __('View Offer Document') }}</span>
                                             </a>
                                         </div>
                                     </div>
@@ -154,8 +218,8 @@
                                 <div class="inline-block p-4 rounded-full bg-slate-50 text-slate-300 mb-4">
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                                 </div>
-                                <p class="text-slate-500 font-medium">{{ __('No applicant data received yet.') }}</p>
-                                <p class="text-xs text-slate-400 mt-1">{{ __('Applicant data will appear here once they register.') }}</p>
+                                <p class="text-slate-500 font-medium">{{ __('No supplier data received yet.') }}</p>
+                                <p class="text-xs text-slate-400 mt-1">{{ __('Supplier data will appear here once they register.') }}</p>
                             </div>
                             @endforelse
                         </div>
@@ -213,13 +277,13 @@
                                     </div>
                                 </div>
                                 <div class="flex gap-1 relative z-10">
-                                    @if($r->status_lamaran == 'Pending')
+                                    @if($r->status_supplier == 'Pending')
                                         <form action="{{ route('status.update', $r->id) }}" method="POST">@csrf @method('PUT')<button name="status" value="Lulus" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-emerald-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5" title="{{ __('Accept') }}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button></form>
                                         <form action="{{ route('status.update', $r->id) }}" method="POST">@csrf @method('PUT')<button name="status" value="Gagal" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5" title="{{ __('Reject') }}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></form>
                                     @else
                                         <div class="flex flex-col items-end gap-1.5">
-                                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider {{ $r->status_lamaran == 'Lulus' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100' }}">
-                                                {{ $r->status_lamaran == 'Lulus' ? __('ACCEPTED') : __('REJECTED') }}
+                                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider {{ $r->status_supplier == 'Lulus' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100' }}">
+                                                {{ $r->status_supplier == 'Lulus' ? __('ACCEPTED') : __('REJECTED') }}
                                             </span>
                                             <form action="{{ route('status.update', $r->id) }}" method="POST">@csrf @method('PUT')<button name="status" value="Pending" class="text-[10px] text-slate-400 hover:text-[#232f3e] font-medium underline decoration-slate-300 underline-offset-2 hover:decoration-[#232f3e]/50 transition-all">{{ __('Reset Status') }}</button></form>
                                         </div>
