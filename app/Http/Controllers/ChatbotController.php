@@ -317,21 +317,30 @@ class ChatbotController extends Controller
             $knowledgeContext = "ORGANIZATIONAL KNOWLEDGE BASE:\n" . $knowledge->map(fn($k) => "- " . $k->content)->join("\n");
         }
 
-        $prompt = "ROLE:Elite Talent Auditor & Psychologist. 
-        TASK:Perform a Deep-Dive Forensic Analysis of the Candidate's CV.
-        LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY for all content values.
+        $prompt = "ROLE: Elite Talent Auditor & Psychologist. 
+        TASK: Perform a Deep-Dive Forensic Analysis of the Candidate's CV.
+        LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
         
         METHODOLOGY (CHAIN OF THOUGHT):
-        1. First, scan for 'Red Flags' (gaps, inconsistencies, formatting errors).
-        2. Second, evaluate 'Hard Skills' against the specific CRITERIA provided.
-        3. Third, analyze 'Soft Skills' & 'Psychometrics' based on language patterns, hobbies, and achievements.
-        4. Finally, synthesize all data into a strictly structured JSON report.
+        1. TIME CALCULATION (CRITICAL):
+           - Look for Start Date and End Date for EACH job.
+           - Calculate duration mathematically (e.g., Jan 2024 to Feb 2025 = 1 year 1 month).
+           - Sum up TOTAL relevant experience.
+           - IF 'Present' or 'Sekarang' is used, use Today's Date (" . date('F Y') . ").
+        2. EVIDENCE CHECK:
+           - Scan for specific keywords matching the CRITERIA.
+           - If a criterion asks for 'Leadership' and CV has no team lead roles, score LOW.
+        3. SCORING:
+           - Assign scores (1-5) strictly based on the Evidence.
+           - Score 5 = Perfect Match (Exceeds expectations).
+           - Score 1 = No Evidence Found.
 
         RULES:
-        1. ACCURACY: Do not hallucinate. If evidence is missing, score LOW (1).
-        2. EVIDENCE: You MUST quote the exact text from the CV that justifies every score.
-        3. CRITICALITY: Be strict. Do not give high scores easily. High scores require concrete proof of excellence.
-        4. LANGUAGE: The 'summary', 'recommendation', 'reason', 'evidence', and descriptions MUST be in INDONESIAN.
+        1. NO FLUFF: Do not use filler words like 'Berdasarkan analisis...' or 'Kandidat ini...'. Go STRAIGHT to the point.
+        2. ACCURACY: If experience is < 1 year, DO NOT say 'Experienced'. Say 'Fresh Graduate' or 'Junior'.
+        3. REALITY: Use the calculated duration. Do not hallucinate years of experience.
+        4. CONSISTENCY: Identical CV content MUST yield identical scores.
+        5. LANGUAGE: All output MUST be in clear, professional Indonesian.
         
         $knowledgeContext
         
@@ -345,21 +354,21 @@ class ChatbotController extends Controller
         
         OUTPUT FORMAT (JSON ONLY):
         {
-            \"_analysis_chain\": \"Jelaskan proses berpikir Anda secara singkat di sini sebelum memberikan skor... (Bahasa Indonesia)\",
-            \"summary\": \"Ringkasan Eksekutif (Profesional & Berwawasan Luas dalam Bahasa Indonesia)\",
+            \"_analysis_chain\": \"[Internal Thought] Durasi: Jan 2020-Jan 2022 (2th) + Mar 2022-Skrg (..). Total = X tahun.\",
+            \"summary\": \"[Ringkasan Padat] Arif adalah Junior Web Developer dengan total pengalaman 1.5 tahun di industri...\",
             \"recommendation\": \"SANGAT DIREKOMENDASIKAN / DIREKOMENDASIKAN / DIPERTIMBANGKAN / TIDAK DIREKOMENDASIKAN\",
             \"match_confidence\": \"TINGGI / SEDANG / RENDAH\",
-            \"red_flags\": [\"Bendera Merah 1\", \"Bendera Merah 2\"],
+            \"red_flags\": [\"Durasi kerja pendek (<1 thn) di PT X\", \"Gap year 2021-2022\"],
             \"psychometrics\": {
-                \"leadership_potential\": \"Tinggi/Sedang/Rendah - Alasan\",
+                \"leadership_potential\": \"Tinggi/Sedang/Rendah - Alasan singkat\",
                 \"culture_fit_score\": 1-100,
-                \"work_style\": \"Deskripsi Gaya Kerja\",
-                \"dominant_traits\": [\"Sifat Dominan 1\", \"Sifat Dominan 2\"]
+                \"work_style\": \"Analitis, Terstruktur, Berorientasi Hasil\",
+                \"dominant_traits\": [\"Teliti\", \"Ambisius\"]
             },
-            \"interview_questions\": [\"Pertanyaan Perilaku 1\", \"Pertanyaan Teknis 2\", \"Pertanyaan Kultural 3\"],
-            \"competency_gap\": [\"Kesenjangan Utama 1\", \"Kesenjangan Minor 2\"],
+            \"interview_questions\": [\"Jelaskan gap karier Anda di tahun 2021?\", \"Ceritakan proyek tersulit di PT X?\"],
+            \"competency_gap\": [\"Belum ada pengalaman di Cloud\", \"Bahasa Inggris Pasif\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"Alasan mendalam menghubungkan pengalaman dengan kriteria.\",\"evidence\":\"Kutipan asli dari CV\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"[Poin Utama] Memiliki pengalaman 2 tahun (Sesuai Kriteria >1 thn).\",\"evidence\":\"'Web Dev at PT X (2020-2022)'\"}
             }
         }";
 
@@ -376,7 +385,7 @@ class ChatbotController extends Controller
                     ['role' => 'system', 'content' => 'You are a JSON generator. Always return valid JSON. Be deterministic.'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
-                'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
+                'temperature' => 0.0, // NOL MUTLAK untuk konsistensi maksimum (DETERMINISTIC)
                 'max_tokens' => 8192, // Limit output MAXIMUM (Upgraded from 4096)
                 // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON

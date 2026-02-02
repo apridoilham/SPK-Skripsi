@@ -779,43 +779,62 @@
                                 // 3. Detail Scores (Main Content)
                                 let scoresHtml = '';
                                 if (Object.keys(details).length > 0) {
-                                    scoresHtml += '<div class="space-y-2">';
+                                    scoresHtml += '<div class="space-y-4">'; // Increased spacing
                                     for (const [key, item] of Object.entries(details)) {
                                         let scoreClass = 'bg-slate-100 text-slate-600 border-slate-200';
                                         let reasonIcon = '';
+                                        let scoreColor = '#64748b'; // default slate
                                         
                                         if (item.score >= 4) {
-                                            scoreClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                                            scoreClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                            scoreColor = '#10b981'; // emerald
                                             reasonIcon = '<span class="text-emerald-500 mr-2 text-lg">✓</span>';
                                         } else if (item.score === 3) {
                                             scoreClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                                            scoreColor = '#f59e0b'; // amber
                                             reasonIcon = '<span class="text-amber-500 mr-2 text-lg">●</span>';
                                         } else {
                                             scoreClass = 'bg-red-50 text-red-700 border-red-200';
+                                            scoreColor = '#ef4444'; // red
                                             reasonIcon = '<span class="text-red-500 mr-2 text-lg">⚠️</span>';
                                         }
 
                                         scoresHtml += `
-                                            <div class="flex items-start text-sm bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
-                                                <div class="flex-1 pr-4 space-y-2">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="font-bold text-slate-800 uppercase tracking-wide text-xs bg-slate-100 px-2 py-1 rounded border border-slate-200">${key}</span>
-                                                    </div>
-                                                    
-                                                    <div class="text-slate-700 text-sm leading-relaxed flex items-start gap-2">
-                                                        <span class="shrink-0 mt-0.5">${reasonIcon}</span>
-                                                        <span>${item.reason}</span>
+                                            <div class="relative bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+                                                <!-- Side Color Indicator -->
+                                                <div class="absolute left-0 top-0 bottom-0 w-1.5" style="background-color: ${scoreColor}"></div>
+                                                
+                                                <div class="p-5 flex items-start gap-5">
+                                                    <!-- Main Content -->
+                                                    <div class="flex-1 space-y-3">
+                                                        <div class="flex items-center gap-3">
+                                                            <span class="font-bold text-slate-700 text-sm uppercase tracking-wider bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">${key}</span>
+                                                            <span class="h-px flex-1 bg-slate-100"></span>
+                                                        </div>
+                                                        
+                                                        <div class="text-slate-800 text-[15px] font-medium leading-relaxed flex items-start">
+                                                            ${item.reason}
+                                                        </div>
+
+                                                        ${item.evidence ? `
+                                                        <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mt-2">
+                                                            <div class="text-[10px] uppercase font-bold text-slate-400 mb-1 flex items-center gap-1">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                                Bukti dari CV (Verbatim):
+                                                            </div>
+                                                            <div class="text-slate-600 italic text-xs font-serif leading-relaxed border-l-2 border-slate-300 pl-3">
+                                                                "${item.evidence}"
+                                                            </div>
+                                                        </div>` : ''}
                                                     </div>
 
-                                                    ${item.evidence ? `
-                                                    <div class="mt-2 bg-slate-50 border-l-2 border-slate-300 pl-3 py-1.5 pr-2 rounded-r text-xs text-slate-500 italic">
-                                                        <span class="font-semibold text-slate-400 not-italic text-[10px] uppercase block mb-0.5">Evidence from CV:</span>
-                                                        "${item.evidence}"
-                                                    </div>` : ''}
-                                                </div>
-                                                <div class="flex flex-col items-center justify-center pl-4 border-l border-slate-100">
-                                                    <span class="text-[10px] text-slate-400 uppercase font-bold mb-1">Score</span>
-                                                    <span class="font-black ${scoreClass} text-xl border px-4 py-2 rounded-xl shadow-sm min-w-[3.5rem] text-center">${item.score}</span>
+                                                    <!-- Score Circle -->
+                                                    <div class="flex flex-col items-center justify-center gap-1 pt-1">
+                                                        <div class="w-16 h-16 rounded-full flex items-center justify-center border-4 shadow-sm" style="border-color: ${scoreColor}20; background-color: ${scoreColor}05;">
+                                                            <span class="text-2xl font-black" style="color: ${scoreColor}">${item.score}</span>
+                                                        </div>
+                                                        <span class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Score</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         `;
