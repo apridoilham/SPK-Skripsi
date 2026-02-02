@@ -97,7 +97,7 @@ class ChatbotController extends Controller
         ];
 
         if (!empty($history) && is_array($history)) {
-            $limitedHistory = array_slice($history, -10); // Keep last 10 messages for deep context
+            $limitedHistory = array_slice($history, -20); // Keep last 20 messages for deep context
             foreach ($limitedHistory as $msg) {
                 if (isset($msg['role']) && isset($msg['content'])) {
                     $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
@@ -166,15 +166,15 @@ class ChatbotController extends Controller
             $promptContext .= "- {$k['nama']} ({$k['kode']}): Bobot {$k['bobot']}, Jenis {$k['jenis']}\n";
         }
 
-        // 2. Data Awal (Sampel 3 teratas)
-        $promptContext .= "\nSAMPEL DATA AWAL:\n";
-        foreach (array_slice($data['matriksX'], 0, 3) as $x) {
+        // 2. Data Awal (Sampel 10 teratas - Extended Context)
+        $promptContext .= "\nSAMPEL DATA AWAL (Top 10):\n";
+        foreach (array_slice($data['matriksX'], 0, 10) as $x) {
             $promptContext .= "- {$x['nama']}: " . json_encode(array_diff_key($x, ['nama' => ''])) . "\n";
         }
 
-        // 3. Hasil Akhir (Top 3)
-        $promptContext .= "\nHASIL PERANGKINGAN (TOP 3):\n";
-        foreach (array_slice($data['ranking'], 0, 3) as $i => $r) {
+        // 3. Hasil Akhir (Top 10 - Extended Context)
+        $promptContext .= "\nHASIL PERANGKINGAN (TOP 10):\n";
+        foreach (array_slice($data['ranking'], 0, 10) as $i => $r) {
             $rank = $i + 1;
             $promptContext .= "{$rank}. {$r['nama']} (Skor: {$r['skor_kalkulasi']})\n";
         }
@@ -279,7 +279,7 @@ class ChatbotController extends Controller
             
             // Limit text untuk menghindari token limit
             $text = preg_replace('/\s+/', ' ', $text); // Compress whitespace
-            $text = substr($text, 0, 10000); // Full limit: 10k chars
+            $text = substr($text, 0, 50000); // ULTIMATE limit: 50k chars (approx 12.5k tokens)
 
             // Validasi: Jika teks terlalu pendek (berarti PDF mungkin hasil scan gambar)
             if (strlen(trim($text)) < 50) {
@@ -295,54 +295,65 @@ class ChatbotController extends Controller
             return response()->json(['success' => false, 'message' => 'Belum ada kriteria penilaian di sistem.']);
         }
 
-        // 3. Persiapkan Context Kriteria (FULL DETAIL)
-        // Format: C1:Name (Options)
+        // 3. Persiapkan Context Kriteria (ULTIMATE DETAIL)
+        // Format: C1:Name (Options with Labels)
         $criteriaContext = $kriterias->map(function($k) {
             $opsiStr = collect($k->opsi)->map(function($val, $key) {
-                return ($key+1) . "=$val"; // Format: 1=Buruk
-            })->join(",");
-            return "{$k->nama}({$k->kode}):$opsiStr";
-        })->join("|");
+                // Asumsi val adalah label seperti "Sangat Baik"
+                $score = $key + 1;
+                return "Score {$score}={$val}"; 
+            })->join(", ");
+            return "CRITERIA {$k->nama} (Code: {$k->kode}) [Weight: {$k->bobot}%, Type: {$k->jenis}]\n   Scoring Guide: {$opsiStr}";
+        })->join("\n\n");
 
         // LOAD AI KNOWLEDGE BASE
         $knowledge = AiKnowledgeBase::where('is_active', true)->get();
         $knowledgeContext = "";
         if ($knowledge->isNotEmpty()) {
-            $knowledgeContext = "RULES:" . $knowledge->pluck('content')->join("|");
+            $knowledgeContext = "ORGANIZATIONAL KNOWLEDGE BASE:\n" . $knowledge->map(fn($k) => "- " . $k->content)->join("\n");
         }
 
-        $prompt = "ROLE:Elite Talent Auditor. TASK:Deep-Dive CV Scoring & Profiling.
+        $prompt = "ROLE:Elite Talent Auditor & Psychologist. 
+        TASK:Perform a Deep-Dive Forensic Analysis of the Candidate's CV.
+        
+        METHODOLOGY (CHAIN OF THOUGHT):
+        1. First, scan for 'Red Flags' (gaps, inconsistencies, formatting errors).
+        2. Second, evaluate 'Hard Skills' against the specific CRITERIA provided.
+        3. Third, analyze 'Soft Skills' & 'Psychometrics' based on language patterns, hobbies, and achievements.
+        4. Finally, synthesize all data into a strictly structured JSON report.
+
         RULES:
-        1.CONSISTENT:Input=Output same.
-        2.EVIDENCE:No text=Score 1. Quote evidence VERBATIM from text.
-        3.CALC:Duration=End-Start. Round down.
-        4.MATCH:Literal scale match.
-        5.PSYCHO:Infer deep psychological traits from writing style, career choices, and hobbies.
-        6.RED_FLAGS:Scrutinize for job hopping, gaps, inconsistency, or generic fluff.
-        7.INTERVIEW:Generate behavior-based questions targeting specific weaknesses found.
+        1. ACCURACY: Do not hallucinate. If evidence is missing, score LOW (1).
+        2. EVIDENCE: You MUST quote the exact text from the CV that justifies every score.
+        3. CRITICALITY: Be strict. Do not give high scores easily. High scores require concrete proof of excellence.
         
         $knowledgeContext
-        CRITERIA:$criteriaContext
         
-        CV({$pelamar->nama}):
+        =========================================
+        CRITERIA REFERENCE:
+        $criteriaContext
+        =========================================
+        
+        CANDIDATE CV ({$pelamar->nama}):
         $text
         
-        OUT(JSON):
+        OUTPUT FORMAT (JSON ONLY):
         {
-            \"summary\": \"Executive Summary: A comprehensive 3-5 sentence overview of the candidate's profile, highlighting key strengths, career trajectory, and overall suitability.\",
-            \"recommendation\": \"HIGHLY RECOMMENDED / CONSIDER WITH RESERVATIONS / NOT RECOMMENDED\",
+            \"_analysis_chain\": \"Briefly explain your thinking process here before scoring...\",
+            \"summary\": \"Executive Summary (Professional & Insightful)\",
+            \"recommendation\": \"HIGHLY RECOMMENDED / RECOMMENDED / CONSIDER / NOT RECOMMENDED\",
             \"match_confidence\": \"HIGH / MEDIUM / LOW\",
-            \"red_flags\": [\"Detailed Red Flag 1\", \"Detailed Red Flag 2\"],
+            \"red_flags\": [\"Flag 1\", \"Flag 2\"],
             \"psychometrics\": {
-                \"leadership_potential\": \"High/Medium/Low - Explanation\",
+                \"leadership_potential\": \"High/Med/Low - Reason\",
                 \"culture_fit_score\": 1-100,
-                \"work_style\": \"Detailed description of their probable work style (e.g., Independent, Collaborative, Process-Oriented).\",
-                \"dominant_traits\": [\"Trait 1\", \"Trait 2\", \"Trait 3\"]
+                \"work_style\": \"Description\",
+                \"dominant_traits\": [\"Trait 1\", \"Trait 2\"]
             },
-            \"interview_questions\": [\"Question 1 (Targeting Gap X)\", \"Question 2 (Targeting Trait Y)\", \"Question 3 (General Fit)\"],
-            \"competency_gap\": [\"Gap 1\", \"Gap 2\"],
+            \"interview_questions\": [\"Behavioral Q1\", \"Technical Q2\", \"Cultural Q3\"],
+            \"competency_gap\": [\"Major Gap 1\", \"Minor Gap 2\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"EXTREMELY DETAILED reason citing specific years, projects, or skills.\",\"evidence\":\"Verbatim quote from CV\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"Deep reasoning linking experience to criteria.\",\"evidence\":\"Verbatim quote\"}
             }
         }";
 
