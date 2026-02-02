@@ -80,19 +80,42 @@ class ChatbotController extends Controller
             })->join("\n");
         }
 
-        // 1. System Prompt - ELITE EXPERT MODE
+        // 1. System Prompt - ELITE EXPERT MODE (STRICT & ACCURATE)
         $systemPrompt = "ROLE: Elite Chief Human Capital Officer & Senior Data Scientist (Indonesian Speaking).
-        TONE: Highly Professional, Strategic, Detailed, and Insightful.
+        TONE: Direct, High-Impact, Professional, and Deeply Strategic.
         LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
         CTX:$infoKriteria
         $knowledgeContext
+        
         RULES:
-        1.DEEP_ANALYSIS: Provide comprehensive, multi-layered answers. Don't just answer 'what', answer 'why' and 'how'.
-        2.STRATEGIC VALUE: Connect every insight to business impact and long-term organizational goals.
-        3.CUSTOMIZATION: Use the specific criteria context to tailor advice perfectly.
-        4.PROACTIVE: Suggest related concepts, risks, or opportunities user might have missed.
-        5.STRICT_LANGUAGE: All responses MUST be in formal, professional Indonesian.
-        JSON_FMT:[{\"kode\":\"C1\",\"nama\":\"..\",\"bobot\":30,\"jenis\":\"benefit\",\"opsi\":[\"..\"]}]";
+        1. NO FLUFF: Do NOT use introductory filler (e.g., 'Tentu, saya bisa bantu...', 'Berikut adalah...', 'Terima kasih atas pertanyaannya'). GO STRAIGHT TO THE ANSWER. Start immediately with the core analysis or data.
+        2. HIGH ACCURACY: Answers must be fact-based, logical, and mathematically correct.
+        3. SPECIFIC RECOMMENDATIONS: Do NOT give general advice. Provide specific, actionable steps tailored to the user's specific HR domain/industry query. If the user asks about IT recruitment, give IT-specific tests/criteria.
+        4. DEEP INSIGHT (MAX TOKEN UTILIZATION): Use the available token space to provide COMPREHENSIVE depth. Provide detailed analysis, pros/cons, risk assessment, and strategic implications. Do not be brief. Be thorough.
+        5. STRUCTURE: Use Markdown (Bold, Bullet points, Tables) for readability.
+        6. RELEVANCE: If the user asks about a candidate, refer to the provided criteria context.
+        7. STRICT INDONESIAN: Use formal, business-level Indonesian.
+        8. JSON OUTPUT FOR CRITERIA RECOMMENDATION: 
+           If the user explicitly asks for \"recommendation of criteria\" (rekomendasi kriteria), you MUST provide a JSON configuration at the end of your response.
+           - The JSON must be wrapped in `|||JSON_START|||` and `|||JSON_END|||` tags.
+           - The JSON format must be an array of objects:
+             `[{\"kode\": \"C1\", \"nama\": \"Criteria Name\", \"bobot\": 30, \"jenis\": \"benefit\", \"opsi\": [\"1-Poor\", \"2-Fair\", \"3-Good\", \"4-Very Good\", \"5-Excellent\"]}]`
+           - Ensure the total `bobot` sums exactly to 100.
+           - `jenis` can be 'benefit' or 'cost'.
+           - `opsi` should be a scale (usually 1-5) description.
+        9. CONTEXTUAL RELEVANCE SCORING (CRITICAL):
+           - YOU MUST STRICTLY EVALUATE CANDIDATES BASED ON THE TARGET DOMAIN (e.g., Lawyer, Doctor, Supplier, IT).
+           - IF A CANDIDATE'S EXPERTISE DOES NOT MATCH THE TARGET DOMAIN (e.g., a Programmer applying for a Lawyer position), THEY MUST RECEIVE A LOW SCORE, EVEN IF THEY ARE AN EXPERT IN THEIR OWN FIELD.
+           - Expertise in an irrelevant field is USELESS for the target role.
+           - Context is KING. Always check the specific job/role being discussed before evaluating.
+           - FORCEFUL CORRECTION: If the user asks why a candidate is good but you see a mismatch, CORRECT THE USER. Say: 'Candidate X is an expert in IT, but this position is for Legal. Thus, they are NOT SUITABLE.'
+        
+        FORMAT:
+        - Direct Answer/Analysis
+        - Key Strategic Data Points
+        - Specific Actionable Recommendations (Step-by-Step)
+        - Potential Risks/Opportunities
+        - (Optional) |||JSON_START||| ... |||JSON_END|||";
 
         // 2. Chat History - EXTENDED CONTEXT
         $messages = [
@@ -100,7 +123,7 @@ class ChatbotController extends Controller
         ];
 
         if (!empty($history) && is_array($history)) {
-            $limitedHistory = array_slice($history, -20); // Keep last 20 messages for deep context
+            $limitedHistory = array_slice($history, -10); // Keep last 10 messages for focused context
             foreach ($limitedHistory as $msg) {
                 if (isset($msg['role']) && isset($msg['content'])) {
                     $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
@@ -120,8 +143,9 @@ class ChatbotController extends Controller
             ])->post('https://api.groq.com/openai/v1/chat/completions', [
                 'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
-                'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
-                'max_tokens' => 8192 // MAXIMUM POWER (Upgraded from 4096)
+                'temperature' => 0.2, // LOW TEMPERATURE for High Accuracy & Determinism
+                'max_tokens' => 8192, // MAXIMUM POWER for Deep Answers
+                'top_p' => 0.9, // Slight diversity allowed
             ]);
 
             if ($response->successful()) {
@@ -184,6 +208,12 @@ class ChatbotController extends Controller
 
         $systemPrompt = "ROLE:Lead Data Scientist & HR Strategist. GOAL:Provide Deep-Dive Analytical Explanation of SAW Results.
         LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
+        
+        CRITICAL CONTEXT AWARENESS:
+        - Analyze the Criteria Names to understand the Target Job (e.g. 'Hukum' -> Lawyer).
+        - If a candidate has low scores despite high raw stats (e.g. 10 years exp), EXPLAIN that their experience might be IRRELEVANT to the target job (Domain Mismatch).
+        - Be brutally honest about Domain Mismatch. If a candidate is a programmer applying for a doctor role, SAY IT.
+        
         OUT(Markdown):
         1. **Ringkasan Eksekutif Strategis**: Mengapa peringkat ini penting bagi bisnis.
         2. **Keunggulan Kompetitif Pemenang**: Rincian kekuatan kandidat teratas relatif terhadap bobot kriteria tertentu.
@@ -322,25 +352,39 @@ class ChatbotController extends Controller
         LANGUAGE: INDONESIAN (BAHASA INDONESIA) ONLY.
         
         METHODOLOGY (CHAIN OF THOUGHT):
-        1. TIME CALCULATION (CRITICAL):
+        1. TARGET DOMAIN IDENTIFICATION (MANDATORY):
+           - Analyze the CRITERIA names and KNOWLEDGE BASE to determine the JOB ROLE (e.g., \"Medical/Doctor\", \"Legal/Lawyer\", \"IT/Programmer\").
+           - If unsure, look for domain-specific keywords in the Criteria (e.g., \"Surgery\" -> Doctor, \"Litigation\" -> Lawyer).
+
+        2. DOMAIN RELEVANCE FILTER (ZERO TOLERANCE):
+           - IGNORE experience/skills that are IRRELEVANT to the Target Domain.
+           - Example: If Target is \"Lawyer\", a \"Senior Java Developer\" (10 years exp) gets SCORE 1 (Poor) for Experience/Skill, because their experience is irrelevant.
+           - Do NOT give high scores just because the candidate is \"Senior\" or \"Expert\" in a wrong field.
+           - \"Expert\" in wrong field = \"Novice\" in target field.
+           - IF MISMATCH FOUND: Immediately flag as RED FLAG in JSON output.
+
+        3. TIME CALCULATION (CRITICAL):
            - Look for Start Date and End Date for EACH job.
            - Calculate duration mathematically (e.g., Jan 2024 to Feb 2025 = 1 year 1 month).
-           - Sum up TOTAL relevant experience.
+           - Sum up TOTAL RELEVANT experience (Filter out irrelevant jobs).
            - IF 'Present' or 'Sekarang' is used, use Today's Date (" . date('F Y') . ").
-        2. EVIDENCE CHECK:
+
+        4. EVIDENCE CHECK:
            - Scan for specific keywords matching the CRITERIA.
            - If a criterion asks for 'Leadership' and CV has no team lead roles, score LOW.
-        3. SCORING:
-           - Assign scores (1-5) strictly based on the Evidence.
-           - Score 5 = Perfect Match (Exceeds expectations).
-           - Score 1 = No Evidence Found.
+        
+        5. SCORING:
+           - Assign scores (1-5) strictly based on the RELEVANT Evidence.
+           - Score 5 = Perfect Match in TARGET DOMAIN (Exceeds expectations).
+           - Score 1 = No Relevant Evidence Found OR Domain Mismatch.
 
         RULES:
         1. NO FLUFF: Do not use filler words like 'Berdasarkan analisis...' or 'Kandidat ini...'. Go STRAIGHT to the point.
         2. ACCURACY: If experience is < 1 year, DO NOT say 'Experienced'. Say 'Fresh Graduate' or 'Junior'.
         3. REALITY: Use the calculated duration. Do not hallucinate years of experience.
         4. CONSISTENCY: Identical CV content MUST yield identical scores.
-        5. LANGUAGE: All output MUST be in clear, professional Indonesian.
+        5. DOMAIN MATCHING: If candidate has 10 years experience as 'Chef' but applying for 'Driver', Experience Score is 1 (unless they have driving exp).
+        6. LANGUAGE: All output MUST be in clear, professional Indonesian.
         
         $knowledgeContext
         

@@ -2,6 +2,7 @@
     <x-slot name="head">
         <script src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <style>
             [x-cloak] { display: none !important; }
             /* Custom Scrollbar */
@@ -15,6 +16,14 @@
             .typing-dot:nth-child(2) { animation-delay: 0.2s; }
             .typing-dot:nth-child(3) { animation-delay: 0.4s; }
             @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+            
+            /* Markdown Styles */
+            .prose h1 { font-size: 1.25em; font-weight: 700; margin-bottom: 0.5em; }
+            .prose h2 { font-size: 1.1em; font-weight: 600; margin-bottom: 0.4em; }
+            .prose ul { list-style-type: disc; padding-left: 1.2em; margin-bottom: 0.5em; }
+            .prose ol { list-style-type: decimal; padding-left: 1.2em; margin-bottom: 0.5em; }
+            .prose p { margin-bottom: 0.5em; }
+            .prose strong { font-weight: 600; color: #1e293b; }
         </style>
     </x-slot>
 
@@ -375,64 +384,144 @@
         </div>
 
         <!-- ChatBot UI -->
-        <div x-data="chatBot()"
-             class="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-4" x-cloak>
+        <div x-data="chatBot()" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4" x-cloak>
 
+            <!-- Chat Window -->
             <div x-show="chatOpen" 
-                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-10 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 translate-y-10 scale-95"
-                 class="w-[380px] h-[600px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden ring-1 ring-black/5 shadow-slate-500/20">
+                 x-transition:enter="transition ease-out duration-300" 
+                 x-transition:enter-start="opacity-0 translate-y-10 scale-95" 
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-200" 
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100" 
+                 x-transition:leave-end="opacity-0 translate-y-10 scale-95"
+                 class="w-[500px] h-[700px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden ring-1 ring-slate-900/5 shadow-slate-900/20 font-sans">
                 
-                <div class="bg-slate-900 p-5 flex justify-between items-center shrink-0 border-b border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-[#232f3e] flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-slate-700">AI</div>
-                        <div><h3 class="text-white font-bold text-sm">{{ __('HRD Assistant') }}</h3><p class="text-slate-400 text-[10px] flex items-center gap-1.5 mt-0.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> {{ __('Online System') }}</p></div>
+                <!-- Header -->
+                <div class="bg-[#232f3e] p-5 flex justify-between items-center shrink-0 shadow-md relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+                    <div class="flex items-center gap-4 relative z-10">
+                        <div class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-white font-bold text-xl backdrop-blur-md border border-white/20 shadow-inner">
+                            🤖
+                        </div>
+                        <div>
+                            <h3 class="text-white font-bold text-base tracking-wide shadow-black drop-shadow-sm">{{ __('HRD Assistant') }}</h3>
+                            <p class="text-emerald-400 text-[10px] font-bold flex items-center gap-1.5 mt-0.5 uppercase tracking-wider">
+                                <span class="relative flex h-2.5 w-2.5">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white/20"></span>
+                                </span>
+                                {{ __('Online & Ready') }}
+                            </p>
+                        </div>
                     </div>
                     
-                    <div class="flex items-center gap-1">
-                        <button @click="trainAi()" class="text-slate-400 hover:text-emerald-400 transition-colors bg-white/10 p-2 rounded-full hover:bg-white/20" title="{{ __('Teach AI New Rules') }}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    <div class="flex items-center gap-1.5 relative z-10">
+                        <button @click="trainAi()" class="text-slate-300 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all transform hover:scale-105" title="{{ __('Teach AI New Rules') }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                         </button>
-                        <button @click="clearHistory()" class="text-slate-400 hover:text-red-400 transition-colors bg-white/10 p-2 rounded-full hover:bg-white/20" title="{{ __('Clear Chat History') }}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <button @click="clearHistory()" class="text-slate-300 hover:text-red-400 hover:bg-white/10 p-2 rounded-lg transition-all transform hover:scale-105" title="{{ __('Clear Chat History') }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
-                        <button @click="chatOpen = false" class="text-slate-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full hover:bg-white/20">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <button @click="chatOpen = false" class="text-slate-300 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all transform hover:scale-105 ml-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
                 </div>
 
+                <!-- Chat Body -->
                 <div class="flex-1 bg-slate-50 p-5 overflow-y-auto custom-scrollbar space-y-6" x-ref="chatBody">
                     <template x-for="(msg, index) in messages" :key="index">
-                        <div>
-                            <div x-show="msg.role === 'user'" class="flex justify-end"><div class="bg-[#232f3e] text-white text-sm py-3 px-4 rounded-2xl rounded-tr-sm max-w-[85%] shadow-md leading-relaxed font-medium" x-html="msg.text"></div></div>
-                            <div x-show="msg.role === 'bot'" class="flex justify-start items-end gap-3"><div class="bg-white border border-slate-200 text-slate-700 text-sm py-3 px-4 rounded-2xl rounded-tl-sm max-w-[85%] shadow-sm leading-relaxed font-medium" x-html="msg.text"></div></div>
-                            <div x-show="msg.role === 'proposal'" class="pl-0 mt-3">
-                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm w-full ring-1 ring-slate-200/50">
-                                    <div class="text-xs font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2 flex items-center gap-2"><svg class="w-4 h-4 text-[#232f3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> {{ __('AI Recommendation') }}</div>
-                                    <div class="space-y-2 mb-4"><template x-for="item in msg.data"><div class="flex justify-between text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-100"><span class="font-bold text-slate-600" x-text="item.nama"></span><span class="font-bold text-[#232f3e] bg-slate-200 px-2 py-0.5 rounded border border-slate-300" x-text="item.bobot + '%'"></span></div></template></div>
-                                    <button @click="applyConfig(msg.data)" class="w-full bg-[#232f3e] hover:bg-[#1a232e] text-white text-xs font-bold py-3 rounded-xl transition-all shadow-md shadow-slate-500/20 hover:-translate-y-0.5 flex justify-center items-center gap-2"><span>{{ __('Apply Configuration') }}</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button>
+                        <div class="flex flex-col gap-1 transition-all duration-300 ease-in-out">
+                            <!-- User Message -->
+                            <div x-show="msg.role === 'user'" class="flex justify-end pl-12">
+                                <div class="bg-[#232f3e] text-white text-sm py-3.5 px-5 rounded-2xl rounded-tr-sm shadow-lg shadow-slate-200 leading-relaxed font-medium transform transition-all hover:shadow-xl" x-html="msg.text"></div>
+                            </div>
+                            
+                            <!-- Bot Message -->
+                            <div x-show="msg.role === 'bot'" class="flex justify-start pr-12 items-start gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm text-xl ring-2 ring-slate-50">🤖</div>
+                                <div class="bg-white border border-slate-200 text-slate-700 text-sm py-4 px-6 rounded-2xl rounded-tl-none shadow-md shadow-slate-100 prose prose-sm max-w-none prose-p:leading-relaxed prose-li:marker:text-[#232f3e] prose-headings:text-[#232f3e] prose-strong:text-[#232f3e] prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline" x-html="marked.parse(msg.text)"></div>
+                            </div>
+
+                            <!-- Proposal/Recommendation Card -->
+                            <div x-show="msg.role === 'proposal'" class="pl-11 pr-4 mt-1">
+                                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-full ring-1 ring-slate-100 hover:shadow-md transition-shadow">
+                                    <div class="text-xs font-bold text-[#232f3e] mb-3 border-b border-slate-100 pb-2 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 
+                                        {{ __('Recommended Criteria Configuration') }}
+                                    </div>
+                                    <div class="space-y-2 mb-4">
+                                        <template x-for="item in msg.data">
+                                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-2">
+                                                <div class="flex justify-between items-center text-xs mb-2">
+                                                    <span class="font-bold text-slate-700 text-sm" x-text="item.nama"></span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider" :class="item.jenis === 'benefit' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'" x-text="item.jenis"></span>
+                                                        <span class="font-black text-[#232f3e] bg-white px-2 py-1 rounded border border-slate-200 shadow-sm" x-text="item.bobot + '%'"></span>
+                                                    </div>
+                                                </div>
+                                                <!-- Show Options/Scale if available -->
+                                                <div x-show="item.opsi && item.opsi.length" class="flex flex-wrap gap-1 mt-1">
+                                                    <template x-for="(opt, idx) in item.opsi">
+                                                        <span class="text-[9px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded" x-text="(idx+1) + '. ' + opt"></span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <button @click="applyConfig(msg.data)" class="w-full bg-[#232f3e] hover:bg-[#1a232e] text-white text-xs font-bold py-3 rounded-xl transition-all shadow-md shadow-slate-900/10 hover:-translate-y-0.5 flex justify-center items-center gap-2 group">
+                                        <span>{{ __('Apply Configuration') }}</span>
+                                        <svg class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </template>
-                    <div x-show="isLoading" class="flex justify-start"><div class="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm flex gap-1.5"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>
+                    
+                    <!-- Loading State -->
+                    <div x-show="isLoading" class="flex justify-start items-center gap-3 pr-10">
+                        <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm text-lg">🤖</div>
+                        <div class="bg-white border border-slate-200 px-4 py-3.5 rounded-2xl rounded-tl-none shadow-sm flex gap-1.5 items-center">
+                            <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="p-4 bg-white border-t border-slate-200 shrink-0">
-                    <div class="relative flex items-center">
-                        <input type="text" x-model="userInput" @keydown.enter="sendMessage()" :disabled="isLoading" 
-                               placeholder="Ketik pesan untuk asisten..." 
-                               class="w-full text-sm font-medium bg-slate-50 border border-slate-200 rounded-full py-3.5 pl-5 pr-14 focus:ring-2 focus:ring-[#232f3e] focus:border-transparent transition-all placeholder-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed">
-                        <button @click="sendMessage()" :disabled="!userInput || isLoading" class="absolute right-2 p-2 bg-[#232f3e] text-white rounded-full hover:bg-[#1a232f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"><svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg></button>
+                <!-- Input Area -->
+                <div class="p-5 bg-white border-t border-slate-200 shrink-0">
+                    <div class="relative flex items-center shadow-inner rounded-3xl bg-slate-50 border border-slate-200 focus-within:ring-2 focus-within:ring-[#232f3e] focus-within:bg-white transition-all duration-300">
+                        <textarea x-model="userInput" @keydown.enter.prevent="if(!$event.shiftKey) sendMessage()" :disabled="isLoading" 
+                               placeholder="Tanya strategi HR, analisis kandidat, atau lainnya..." 
+                               rows="1"
+                               @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                               class="w-full text-sm font-medium bg-transparent border-transparent rounded-3xl py-4 pl-5 pr-14 focus:ring-0 focus:border-transparent transition-all placeholder-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed resize-none overflow-hidden" style="min-height: 56px; max-height: 150px;"></textarea>
+                        <button @click="sendMessage()" :disabled="!userInput || isLoading" 
+                                class="absolute right-2 bottom-2 w-10 h-10 bg-[#232f3e] text-white rounded-full hover:bg-[#1a232f] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center group transform hover:scale-110 active:scale-95">
+                            <svg class="w-5 h-5 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                    </div>
+                    <div class="text-center mt-3 flex justify-between items-center px-2">
+                         <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>{{ __('Enter to send, Shift+Enter for new line') }}</span>
+                         </p>
+                        <p class="text-[10px] text-slate-400 font-medium">Powered by <span class="text-[#232f3e] font-bold">Llama 3.3 Elite</span></p>
                     </div>
                 </div>
             </div>
 
-            <button @click="chatOpen = !chatOpen" class="w-16 h-16 bg-[#232f3e] hover:bg-[#1a232e] text-white rounded-full shadow-[0_8px_30px_rgba(35,47,62,0.3)] transition-all transform hover:scale-110 flex items-center justify-center border-4 border-white">
-                <svg x-show="!chatOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                <svg x-show="chatOpen" class="w-8 h-8 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                <span class="absolute top-0 right-0 w-5 h-5 bg-red-500 border-2 border-white rounded-full animate-bounce"></span>
+            <!-- Toggle Button -->
+            <button @click="chatOpen = !chatOpen" 
+                    class="group w-14 h-14 bg-[#232f3e] hover:bg-[#1a232e] text-white rounded-2xl shadow-[0_8px_30px_rgba(35,47,62,0.4)] transition-all duration-300 transform hover:scale-105 flex items-center justify-center border-2 border-white/20 hover:border-white/40 z-50">
+                <div class="relative">
+                    <svg x-show="!chatOpen" class="w-7 h-7 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <svg x-show="chatOpen" class="w-7 h-7 rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <span x-show="!chatOpen" class="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
+                    </span>
+                </div>
             </button>
         </div>
 
