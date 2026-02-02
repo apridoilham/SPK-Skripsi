@@ -119,7 +119,7 @@ class ChatbotController extends Controller
                 'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
                 'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
-                'max_tokens' => 4096 // MAXIMUM POWER
+                'max_tokens' => 8192 // MAXIMUM POWER (Upgraded from 4096)
             ]);
 
             if ($response->successful()) {
@@ -188,7 +188,7 @@ class ChatbotController extends Controller
         4. **Sensitivity Note**: How stable is this result? (e.g., if criteria X changed slightly, would the winner change?)
         5. **Actionable Recommendation**: Next steps (Interview focus, negotiation leverage, etc.).
         
-        Use bolding, lists, and professional formatting. Be exhaustive.";
+        Use bolding, lists, and professional formatting. Be exhaustive. Generate a LONG, DETAILED report.";
 
         try {
             $client = \Illuminate\Support\Facades\Http::withHeaders([
@@ -204,7 +204,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $promptContext]
                 ],
                 'temperature' => 0.7,
-                'max_tokens'  => 4096,
+                'max_tokens'  => 8192, // Upgraded from 4096
             ]);
 
             $responseData = $response->json();
@@ -280,7 +280,7 @@ class ChatbotController extends Controller
             
             // Limit text untuk menghindari token limit
             $text = preg_replace('/\s+/', ' ', $text); // Compress whitespace
-            $text = substr($text, 0, 50000); // ULTIMATE limit: 50k chars (approx 12.5k tokens)
+            $text = substr($text, 0, 100000); // ULTIMATE limit: 100k chars (approx 25k tokens)
 
             // Validasi: Jika teks terlalu pendek (berarti PDF mungkin hasil scan gambar)
             if (strlen(trim($text)) < 50) {
@@ -372,7 +372,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
-                'max_tokens' => 4096, // Limit output MAXIMUM
+                'max_tokens' => 8192, // Limit output MAXIMUM (Upgraded from 4096)
                 // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON
             ]);
