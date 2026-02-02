@@ -79,27 +79,32 @@ class ChatbotController extends Controller
             })->join("\n");
         }
 
-        // 1. System Prompt - ULTRA COMPRESSED
-        // Hapus knowledge base dan criteria detail untuk hemat token
-        $systemPrompt = "ROLE:HR Helper. Brief.";
+        // 1. System Prompt - FULL INTELLIGENCE
+        $systemPrompt = "ROLE:CHCO/Consultant. TONE:Pro-Human.
+        CTX:$infoKriteria
+        $knowledgeContext
+        RULES:
+        1.DEEP_CUSTOM:Role-specific criteria(Dr->STR,IT->Code). No generic.
+        2.ADAPT:Forget old ctx if topic changes.
+        3.ACT:If user needs NEW criteria->ID skills->Create 4-5 specific->JSON end.
+        JSON_FMT:[{\"kode\":\"C1\",\"nama\":\"..\",\"bobot\":30,\"jenis\":\"benefit\",\"opsi\":[\"..\"]}]";
 
-        // 2. Chat History - EXTREME LIMIT
-        // Cuma ambil 1 chat terakhir (Stateless)
+        // 2. Chat History - FULL CONTEXT
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt]
         ];
 
         if (!empty($history) && is_array($history)) {
-            $lastMsg = end($history);
-            if ($lastMsg && isset($lastMsg['content'])) {
-                // Truncate extreme to 100 chars.
-                $content = substr($lastMsg['content'], 0, 100);
-                $messages[] = ['role' => 'user', 'content' => $content];
+            $limitedHistory = array_slice($history, -6); // Keep last 6 messages
+            foreach ($limitedHistory as $msg) {
+                if (isset($msg['role']) && isset($msg['content'])) {
+                    $messages[] = ['role' => $msg['role'], 'content' => $msg['content']];
+                }
             }
         }
         
         // Add current user message
-        $messages[] = ['role' => 'user', 'content' => substr($userMessage, 0, 100)];
+        $messages[] = ['role' => 'user', 'content' => $userMessage];
 
         try {
             // 5. Request ke Groq API
@@ -111,7 +116,7 @@ class ChatbotController extends Controller
                 'model' => 'llama-3.3-70b-versatile', // Kembali ke Llama 3.3 (Model Aktif)
                 'messages' => $messages, // Use the full message history
                 'temperature' => 0.7, // Sedikit lebih kreatif untuk variasi
-                'max_tokens' => 150 // Hemat token ekstrem
+                'max_tokens' => 1024 // Restore Full Power
             ]);
 
             if ($response->successful()) {
@@ -153,18 +158,32 @@ class ChatbotController extends Controller
         // Build prompt from data
         $promptContext = "Berikut adalah data perhitungan SPK metode SAW:\n\n";
         
-        // 1. Kriteria (Names only)
-        $promptContext = "KRIT:" . collect($data['kriterias'])->pluck('nama')->join(',') . "\n";
-
-        // 2. Hasil Akhir (Top 2 only for comparison)
-        $promptContext .= "TOP 2:\n";
-        foreach (array_slice($data['ranking'], 0, 2) as $i => $r) {
-            $rank = $i + 1;
-            $promptContext .= "{$rank}. {$r['nama']} ({$r['skor_kalkulasi']})\n";
+        // 1. Kriteria
+        $promptContext = "KRITERIA:\n";
+        foreach ($data['kriterias'] as $k) {
+            $promptContext .= "- {$k['nama']} ({$k['kode']}): Bobot {$k['bobot']}, Jenis {$k['jenis']}\n";
         }
 
-        $systemPrompt = "Explain why #1 won vs #2. Brief.";
-        
+        // 2. Data Awal (Sampel 3 teratas)
+        $promptContext .= "\nSAMPEL DATA AWAL:\n";
+        foreach (array_slice($data['matriksX'], 0, 3) as $x) {
+            $promptContext .= "- {$x['nama']}: " . json_encode(array_diff_key($x, ['nama' => ''])) . "\n";
+        }
+
+        // 3. Hasil Akhir (Top 3)
+        $promptContext .= "\nHASIL PERANGKINGAN (TOP 3):\n";
+        foreach (array_slice($data['ranking'], 0, 3) as $i => $r) {
+            $rank = $i + 1;
+            $promptContext .= "{$rank}. {$r['nama']} (Skor: {$r['skor_kalkulasi']})\n";
+        }
+
+        $systemPrompt = "ROLE:HR. GOAL:Explain SAW simply.
+        OUT(Markdown):
+        1.Why this result?
+        2.Winner strength?
+        3.Rank1 vs 2 diff?
+        4.Advice?";
+
         try {
             $client = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
@@ -179,7 +198,7 @@ class ChatbotController extends Controller
                     ['role' => 'user', 'content' => $promptContext]
                 ],
                 'temperature' => 0.7,
-                'max_tokens'  => 150,
+                'max_tokens'  => 1024,
             ]);
 
             $responseData = $response->json();
@@ -255,7 +274,7 @@ class ChatbotController extends Controller
             
             // Limit text untuk menghindari token limit
             $text = preg_replace('/\s+/', ' ', $text); // Compress whitespace
-            $text = substr($text, 0, 300); // Nuclear limit: Only 300 chars (approx 75 tokens)
+            $text = substr($text, 0, 10000); // Full limit: 10k chars
 
             // Validasi: Jika teks terlalu pendek (berarti PDF mungkin hasil scan gambar)
             if (strlen(trim($text)) < 50) {
@@ -271,28 +290,46 @@ class ChatbotController extends Controller
             return response()->json(['success' => false, 'message' => 'Belum ada kriteria penilaian di sistem.']);
         }
 
-        // 3. Persiapkan Context Kriteria (ULTRA COMPACT)
-        // Format: C1:Name|C2:Name
+        // 3. Persiapkan Context Kriteria (FULL DETAIL)
+        // Format: C1:Name (Options)
         $criteriaContext = $kriterias->map(function($k) {
-            return "{$k->kode}:{$k->nama}";
+            $opsiStr = collect($k->opsi)->map(function($val, $key) {
+                return ($key+1) . "=$val"; // Format: 1=Buruk
+            })->join(",");
+            return "{$k->nama}({$k->kode}):$opsiStr";
         })->join("|");
 
-        // LOAD AI KNOWLEDGE BASE (DISABLED FOR SAVING TOKENS)
+        // LOAD AI KNOWLEDGE BASE
+        $knowledge = AiKnowledgeBase::where('is_active', true)->get();
         $knowledgeContext = "";
+        if ($knowledge->isNotEmpty()) {
+            $knowledgeContext = "RULES:" . $knowledge->pluck('content')->join("|");
+        }
+
+        $prompt = "ROLE:Auditor. TASK:Score CV.
+        RULES:
+        1.CONSISTENT:Input=Output same.
+        2.EVIDENCE:No text=Score 1. Quote evidence.
+        3.CALC:Duration=End-Start. Round down.
+        4.MATCH:Literal scale match.
         
-        $prompt = "TASK:Score CV.
-        CRIT:$criteriaContext
+        $knowledgeContext
+        CRITERIA:$criteriaContext
         
-        CV:
+        CV({$pelamar->nama}):
         $text
         
-        JSON:
+        OUT(JSON):
         {
-            \"summary\": \"1 sentence\",
-            \"recommendation\": \"HIGH/LOW\",
-            \"match_confidence\": \"HIGH/LOW\",
+            \"summary\": \"Profile & Exp Duration(Calc)\",
+            \"recommendation\": \"HIGH/CONSIDER/LOW\",
+            \"match_confidence\": \"HIGH/MED/LOW\",
+            \"red_flags\": [\"..\"],
+            \"psychometrics\": {\"leadership_potential\":\"..\",\"culture_fit_score\":1-100,\"work_style\":\"..\",\"dominant_traits\":[\"..\"]},
+            \"interview_questions\": [\"..\"],
+            \"competency_gap\": [\"..\"],
             \"details\": {
-                \"KODE\":{\"score\":1-5,\"reason\":\"Brief\",\"evidence\":\"Brief\"}
+                \"KODE\":{\"score\":1-5,\"reason\":\"..\",\"evidence\":\"Quote\"}
             }
         }";
 
@@ -305,11 +342,11 @@ class ChatbotController extends Controller
             ])->post('https://api.groq.com/openai/v1/chat/completions', [
                 'model' => 'llama-3.3-70b-versatile', // Ganti ke Llama 3.3 (Model Aktif)
                 'messages' => [
-                    ['role' => 'system', 'content' => 'JSON only.'],
+                    ['role' => 'system', 'content' => 'You are a JSON generator. Always return valid JSON. Be deterministic.'],
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1, // Rendah untuk konsistensi, tapi tidak nol mutlak
-                'max_tokens' => 150, // Limit output nuclear
+                'max_tokens' => 2048, // Limit output FULL
                 // 'seed' => 42, // Seed dinonaktifkan sementara karena isu kompatibilitas
                 'response_format' => ['type' => 'json_object'] // Paksa mode JSON
             ]);
